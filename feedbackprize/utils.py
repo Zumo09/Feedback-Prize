@@ -1,7 +1,7 @@
 from typing import List
 import pandas as pd
 
-def read_train_csv() -> pd.DataFrame:
+def read_data() -> pd.DataFrame:
     return pd.read_csv('dataset/train.csv')
 
 def read_file(file_id: str, folder: str = 'train') -> List[str]:
