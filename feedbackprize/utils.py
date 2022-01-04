@@ -1,15 +1,28 @@
-from typing import Dict, List, Tuple
+import os
 import pandas as pd
 
-def read_data_csv() -> pd.DataFrame:
-    return pd.read_csv('dataset/train.csv')
+from typing import Tuple
 
-def read_file(file_id: str, folder: str = 'train') -> str:
-    with open(f'dataset/{folder}/{file_id}.txt', 'r') as f:
+DATASET_FOLDER = 'dataset'
+
+def load_data_csv() -> pd.DataFrame:
+    return pd.read_csv(os.path.join(DATASET_FOLDER, 'train.csv'))
+
+def load_file(file_id: str, folder: str = 'train') -> str:
+    path = os.path.join(DATASET_FOLDER, folder, file_id + '.txt')
+    with open(path, 'r') as f:
         text = f.read()
     return text
 
-def read_dataset() -> Tuple[pd.Series, pd.DataFrame]:
-    data = read_data_csv()
-    full_text = pd.Series({id: read_file(id) for id in data['id'].unique()})
-    return full_text, data
+def load_texts(folder: str = 'train') -> pd.Series:
+    data_path = os.path.join(DATASET_FOLDER, folder)
+
+    def read(filename):
+        with open(os.path.join(data_path, filename), 'r') as f:
+            text = f.read()
+        return text
+
+    return pd.Series({fname.replace('.txt', ''): read(fname) for fname in os.listdir(data_path)})     
+
+def load_dataset() -> Tuple[pd.Series, pd.DataFrame]:
+    return load_texts(), load_data_csv()
