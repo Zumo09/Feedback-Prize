@@ -6,7 +6,9 @@ from typing import Tuple
 DATASET_FOLDER = 'dataset'
 
 def load_data_csv() -> pd.DataFrame:
-    return pd.read_csv(os.path.join(DATASET_FOLDER, 'train.csv'))
+    return pd.read_csv(
+        os.path.join(DATASET_FOLDER, 'train.csv'), 
+        dtype={'discourse_id': 'int64', 'discourse_start': int, 'discourse_end': int})
 
 def load_file(file_id: str, folder: str = 'train') -> str:
     path = os.path.join(DATASET_FOLDER, folder, file_id + '.txt')
