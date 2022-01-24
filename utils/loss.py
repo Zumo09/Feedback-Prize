@@ -5,7 +5,10 @@ from scipy.optimize import linear_sum_assignment
 
 
 def iou(y_target, y_pred, text_token):
-  
+    '''
+    probabaly center and len need to be renormalized to obtain the real values
+    '''
+    
     mask_pred = torch.where((text_token >= torch.floor(y_pred['center'] - y_pred['len']/2)) \
                           and (text_token <= torch.ceil(y_pred['center'] + y_pred['len']/2)))
     mask_target = torch.where((text_token >= torch.floor(y_target['center'] - y_target['len']/2)) \
