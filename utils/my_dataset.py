@@ -18,7 +18,9 @@ PIPELINE = [
 
 
 class MyDataset(Dataset):
-    def __init__(self, path: str = '../input/feedback-prize-2021/train',
+    def __init__(self, 
+                 #path: str = '../input/feedback-prize-2021/train',
+                 path: str = '../input/feedback-prize-2021/',
                  preprocess: Optional[List[Callable[[str], str]]] = None,
                  category_map: Dict[str, int] = None):
         self.category_map = category_map
@@ -44,9 +46,11 @@ class MyDataset(Dataset):
     @staticmethod
     def load_texts(path: str, preprocess: List[Callable[[str], str]]) -> pd.Series:
         documents = {}
-        for f_name in os.listdir(path):
+        #for f_name in os.listdir(path):
+        for f_name in os.listdir(path + 'train/'):
             doc_name = f_name.replace('.txt', '')
-            with open(f_name, 'r') as f:
+            #with open(f_name, 'r') as f:
+            with open(path + 'train/'+ f_name, 'r') as f:
                 text = reduce(lambda txt, f: f(txt), preprocess, f.read())
                 documents[doc_name] = text
 
