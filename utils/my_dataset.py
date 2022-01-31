@@ -75,7 +75,7 @@ class MyDataset(Dataset):
         tag_boxes = []
         for p in pred:
             p = p.split()
-            p = [int(p[i]) for i in range(len(p))]
+            p = [int(n) for n in p]
             p = torch.Tensor(p)
             tag_boxes.append([torch.mean(p), p.size()[0]])
 
