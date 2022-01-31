@@ -3,7 +3,7 @@ import unicodedata
 
 
 REPLACE_BY_SPACE_RE = re.compile('[/(){}\[\]\|@_-]')
-GOOD_SYMBOLS_RE = re.compile('[^0-9a-z .,;!?]')
+GOOD_SYMBOLS_RE = re.compile('[^0-9a-z .,;!?\']')
 
 
 def normalize(text: str) -> str:
