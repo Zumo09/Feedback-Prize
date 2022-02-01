@@ -39,6 +39,9 @@ class MyDataset(Dataset):
         
         label_unique = np.array(self.tags['discourse_type'].unique()) # type: ignore
         self.encoder = encoder.fit(label_unique.reshape(-1, 1))
+    
+    def __len__(self):
+        return len(self.documents)
 
     def __getitem__(self, index):
         doc_name = self.documents.index[index]

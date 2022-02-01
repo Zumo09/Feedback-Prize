@@ -2,15 +2,20 @@ import torch
 from scipy.optimize import linear_sum_assignment
 
 
-class CustomLoss:
+class HungarianLoss:
     def __init__(self, lambda_iou, lambda_l1, last_hidden_size, num_labels):
         self.l_iou = lambda_iou
         self.l_l1 = lambda_l1
         self.last_hidden_size = last_hidden_size
         self.num_labels = num_labels
 
+        self._box_losses = dict()
+
     @staticmethod
-    def generalized_iou(y_pred, y_target):
+    def giou_1d(y_pred, y_target):
+        """
+        Generalized Intersection Over Union for 1D "Boxes"
+        """
         p_c = y_pred["center"]
         p_l = y_pred["len"] / 2
         t_c = y_target[1]
@@ -42,33 +47,42 @@ class CustomLoss:
     def _is_backgound(self, y_target):
         return y_target[0] == self.num_labels
 
-    def _class_loss(self, pred, target, matching=False):
-        logit = pred["class"][int(target[0])]
-        if matching:  # matching phase
-            if self._is_backgound(target):
-                return 0
-            else:
-                return logit
-        else:
-            return torch.log(logit)
+    @staticmethod
+    def _get_logit(pred, target):
+        return pred["class"][int(target[0])]
 
-    def _box_loss(self, pred, target):
-        if self._is_backgound(target):
-            return 0
+    def _compute_box_loss(self, pred, target, id_pred, id_target):
+        if target[1] > 1 or target[2] > 1:
+            raise RuntimeError(
+                "Trying to calculate box loss on a non normalized target"
+            )
 
-        return self.l_iou * self.generalized_iou(pred, target) + self.l_l1 * torch.abs(
-            pred["center"] - target[1]
-        )
+        self._box_losses[(id_pred, id_target)] = self.l_iou * self.giou_1d(
+            pred, target
+        ) + self.l_l1 * torch.abs(pred["center"] - target[1])
+
+        return self._box_loss(id_pred, id_target)
+
+    def _box_loss(self, id_pred, id_target):
+        return self._box_losses.get((id_pred, id_target), 0)
+
+    def _class_loss(self, pred, target):
+        return torch.log(self._get_logit(pred, target))
 
     def _matching_phase(self, y_pred, y_target):
         # Computation of cost matrix for hungarian algorithm
-        cost_matrix = torch.zeros((self.last_hidden_size, self.num_labels + 1))
+        cost_matrix = torch.zeros((self.last_hidden_size, self.last_hidden_size))
+        self._box_losses = dict()
 
-        for i in range(len(y_pred)):
-            for j in range(len(y_target)):
-                cost_matrix[i, j] = -self._class_loss(
-                    y_pred[i], y_target[j]
-                ) + self._box_loss(y_pred[i], y_target[j])
+        for i in range(self.last_hidden_size):
+            for j in range(self.last_hidden_size):
+                cost = 0
+                if not self._is_backgound(y_target[j]):
+                    cost = -self._get_logit(
+                        y_pred[i], y_target[j]
+                    ) + self._compute_box_loss(y_pred[i], y_target[j], i, j)
+
+                cost_matrix[i, j] = cost
 
         # It can be improved with better libraries
         id_pred, id_target = linear_sum_assignment(cost_matrix)
@@ -87,18 +101,17 @@ class CustomLoss:
 
         y_target[i] = [s', c', l']
 
-        c, c'. l and l' are normalized wrt the length of the sequence
+        c, c'. l and l' are normalized wrt the length of the sequence, i.e. they are in the range [0, 1]
 
         """
-        l = 0
+        l = torch.zeros(1)
         extend = torch.full((self.last_hidden_size - len(y_target), 3), self.num_labels)
-        targets = torch.vstack((y_target, extend))
-        opt_pairs = self._matching_phase(y_pred, targets)
+        y_target = torch.vstack((y_target, extend))
+        opt_pairs = self._matching_phase(y_pred, y_target)
+
         for id_pred, id_target in opt_pairs:
-            print('Pair: ', id_pred, id_target)
-            print(y_pred[id_pred])
-            print(targets[id_target])
             l += -self._class_loss(
-                y_pred[id_pred], targets[id_target]
-            ) + self._box_loss(y_pred[id_pred], targets[id_target])
+                y_pred[id_pred], y_target[id_target]
+            ) + self._box_loss(id_pred, id_target)
+
         return l
