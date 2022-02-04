@@ -1,9 +1,10 @@
 """
 Utilities for bounding box manipulation and GIoU.
 """
+from typing import Tuple
 import torch
 
-def box_cl_to_se(x):
+def box_cl_to_se(x: torch.Tensor) -> torch.Tensor:
     """
     Convert center-length coordinates to start-end coordinates
     """
@@ -12,7 +13,7 @@ def box_cl_to_se(x):
     return torch.stack(b, dim=-1)
 
 
-def box_se_to_cl(x):
+def box_se_to_cl(x: torch.Tensor) -> torch.Tensor:
     """
     Convert start-end coordinates to center-length coordinates
     """
@@ -20,7 +21,7 @@ def box_se_to_cl(x):
     b = [(s + e) / 2, (s - e)]
     return torch.stack(b, dim=-1)
 
-def box_area(boxes):
+def box_area(boxes: torch.Tensor) -> torch.Tensor:
     """
     Computes the area of a set of bounding boxes, which are specified by their
     (s, e) coordinates.
@@ -37,14 +38,14 @@ def box_area(boxes):
     
 
 # modified from torchvision to also return the union
-def box_iou(boxes1, boxes2):
+def box_iou(boxes1: torch.Tensor, boxes2: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
     area1 = box_area(boxes1)
     area2 = box_area(boxes2)
 
-    lt = torch.max(boxes1[:, None, :1], boxes2[:, :1])  # [N,M,1]
-    rb = torch.min(boxes1[:, None, 1:], boxes2[:, 1:])  # [N,M,1]
+    left = torch.max(boxes1[:, None, :1], boxes2[:, :1])  # [N,M,1]
+    right = torch.min(boxes1[:, None, 1:], boxes2[:, 1:])  # [N,M,1]
 
-    wh = (rb - lt).clamp(min=0)  # [N,M,1]
+    wh = (right - left).clamp(min=0)  # [N,M,1]
     inter = wh[:, :, 0]  # [N,M]
 
     union = area1[:, None] + area2 - inter
@@ -53,7 +54,7 @@ def box_iou(boxes1, boxes2):
     return iou, union
 
 # TODO
-def generalized_box_iou(boxes1, boxes2):
+def generalized_box_iou(boxes1: torch.Tensor, boxes2: torch.Tensor) -> torch.Tensor:
     """
     Generalized IoU from https://giou.stanford.edu/
 
@@ -64,14 +65,29 @@ def generalized_box_iou(boxes1, boxes2):
     """
     # degenerate boxes gives inf / nan results
     # so do an early check
-    assert (boxes1[:, 2:] >= boxes1[:, :2]).all()
-    assert (boxes2[:, 2:] >= boxes2[:, :2]).all()
+    assert (boxes1[:, 1:] >= boxes1[:, :1]).all()
+    assert (boxes2[:, 1:] >= boxes2[:, :1]).all()
     iou, union = box_iou(boxes1, boxes2)
 
-    lt = torch.min(boxes1[:, None, :2], boxes2[:, :2])
-    rb = torch.max(boxes1[:, None, 2:], boxes2[:, 2:])
+    left = torch.min(boxes1[:, None, :1], boxes2[:, :1])
+    right = torch.max(boxes1[:, None, 1:], boxes2[:, 1:])
 
-    wh = (rb - lt).clamp(min=0)  # [N,M,2]
-    area = wh[:, :, 0] * wh[:, :, 1]
+    wh = (right - left).clamp(min=0)  # [N,M,2]
+    area = wh[:, :, 0]
 
     return iou - (area - union) / area
+
+
+if __name__ == '__main__':
+    boxes1 = torch.Tensor([
+        [0, 4], [5, 7], [20, 22]
+    ])
+    boxes2 = torch.Tensor([
+        [0, 4], [5, 10], [12, 19], [21, 23]
+    ])
+    gio = generalized_box_iou(boxes1, boxes2)
+
+    for i, b1 in enumerate(boxes1):
+        for j, b2 in enumerate(boxes2):
+            iou = gio[i, j]
+            print(b1, b2, iou)

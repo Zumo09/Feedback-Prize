@@ -17,12 +17,7 @@ import torch
 import torch.distributed as dist
 from torch import Tensor
 
-# needed due to empty tensor bug in pytorch and torchvision 0.5
 import torchvision
-if version.parse(torchvision.__version__) < version.parse('0.7'):
-    from torchvision.ops import _new_empty_tensor
-    from torchvision.ops.misc import _output_size
-
 
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a
