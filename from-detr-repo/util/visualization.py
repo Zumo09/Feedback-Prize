@@ -1,8 +1,6 @@
 import math
-from sklearn.preprocessing import OrdinalEncoder
+from typing import Iterable
 from spacy import displacy
-from torch import Tensor
-from dataset import FPDataset
 
 # Credits for this part of visualisation _> https://www.kaggle.com/thedrcat
 
@@ -28,7 +26,7 @@ OPTIONS = {
 }
 
 
-def highlight_segments_old(id_example: str, dataset: FPDataset):
+def highlight_segments_dataset(id_example: str, dataset):
     text = dataset.documents[id_example]
     ents = []
     for _, row in dataset.tags[dataset.tags["id"] == id_example].iterrows():  # type: ignore
@@ -45,8 +43,10 @@ def highlight_segments_old(id_example: str, dataset: FPDataset):
     displacy.render(doc2, style="ent", options=OPTIONS, manual=True, jupyter=True)
 
 
-def highlight_segments(text: str, labels: Tensor, boxes: Tensor, title: str = 'Document'):
+def highlight_segments(text: str, labels, boxes, title: str = 'Document'):
     splitted_text = text.split()
+
+    assert len(labels) == len(boxes), f'Labels and boxes of different length {len(labels)=}, {len(boxes)=}'
 
     len_words_inc = [0]
     cont = 0
@@ -54,15 +54,14 @@ def highlight_segments(text: str, labels: Tensor, boxes: Tensor, title: str = 'D
         idx = text[cont:].find(word)
         cont += max(0, idx)
         len_words_inc.append(cont + len(word))
+    len_words_inc.append(len(text))
 
-    ls = len(splitted_text)
     ents = [
         {
-            "start": len_words_inc[math.ceil(start * ls)],
-            "end": len_words_inc[math.ceil(end * ls) + 1],
+            "start": len_words_inc[start],
+            "end": len_words_inc[end + 1],
             "label": label,
         }
-    # TODO Fix 
         for label, (start, end) in zip(labels, boxes)
     ]
 

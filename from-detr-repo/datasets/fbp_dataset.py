@@ -35,7 +35,7 @@ class FBPDataset(Dataset):
     def __len__(self):
         return len(self.documents)
 
-    def __getitem__(self, index) -> Tuple[str, Dict]:
+    def __getitem__(self, index) -> Tuple[str, int, Dict]:
         doc_name = self.documents.index[index]
         doc_tags = self.tags[self.tags["id"] == doc_name]  # type: ignore
         tag_cats = torch.Tensor(
@@ -45,9 +45,10 @@ class FBPDataset(Dataset):
         ).squeeze().long()
 
         document = self.documents[doc_name]
-        tag_boxes = self.map_pred(doc_tags["predictionstring"], len(document.split()))  # type: ignore
+        len_sequence = len(document.split()) # type: ignore
+        tag_boxes = self.map_pred(doc_tags["predictionstring"], len_sequence)  
 
-        return document, {"labels": tag_cats, "boxes": tag_boxes}  # type: ignore
+        return document, len_sequence, {"labels": tag_cats, "boxes": tag_boxes} # type: ignore
 
     # @staticmethod
     # def map_pred(pred, len_sequence):

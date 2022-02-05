@@ -1,48 +1,47 @@
-from sklearn.preprocessing import OrdinalEncoder
-import torch
-from .matcher import HungarianMatcher
-from .criterion import SetCriterion
-from .postprocess import PostProcess
+from torch import nn
+from transformers.utils.dummy_pt_objects import LEDModel
+from transformers.utils.dummy_tokenizers_objects import LEDTokenizerFast
 
-def build(args, encoder: OrdinalEncoder):
-    # the `num_classes` naming here is somewhat misleading.
-    # it indeed corresponds to `max_obj_id + 1`, where max_obj_id
-    # is the maximum id for a class in your dataset. For example,
-    # COCO has a max_obj_id of 90, so we pass `num_classes` to be 91.
-    # As another example, for a dataset that has a single class with id 1,
-    # you should pass `num_classes` to be 2 (max_obj_id + 1).
-    # For more details on this, check the following discussion
-    # https://github.com/facebookresearch/detr/issues/108#issuecomment-650269223
-    num_classes = 8 # 7 + 1
-    device = torch.device(args.device)
 
-    # backbone = build_backbone(args)
+class DETR(nn.Module):
+    def __init__(self, hidden_dim, num_classes, num_queries):
 
-    # transformer = build_transformer(args)
+        super().__init__()
 
-    # model = DETR(
-    #     backbone,
-    #     transformer,
-    #     num_classes=num_classes,
-    #     num_queries=args.num_queries,
-    #     aux_loss=args.aux_loss,
-    # )
+        self.tokenizer = LEDTokenizerFast.from_pretrained("allenai/led-base-16384")
 
-    model = None
+        led = LEDModel.from_pretrained("allenai/led-base-16384")
+        self.encoder = led.encoder
+        self.decoder = led.decoder
 
-    matcher = HungarianMatcher(
-        cost_class=args.set_cost_class,
-        cost_bbox=args.set_cost_bbox,
-        cost_giou=args.set_cost_giou,
-    )
+        self.num_queries = num_queries
+        self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
+        self.bbox_embed = MLP(hidden_dim, hidden_dim, 2, 3)
+        self.query_embed = nn.Embedding(num_queries, hidden_dim)
 
-    weight_dict = {'loss_ce': 1, 'loss_bbox': args.bbox_loss_coef}
-    weight_dict['loss_giou'] = args.giou_loss_coef
+    def forward(self, text):
+        ids = self.tokenizer(text, return_tensor="pt").input_ids
+        hs = self.encoder(input_ids=ids)["last_hidden_state"]
+        hs = self.decoder(
+            input_embeds=self.query_embeds.weigth, encoder_hidden_state=hs # type: ignore
+        )["last_hidden_state"]
+        outputs_class = self.class_embed(hs)
+        outputs_coord = self.bbox_embed(hs).sigmoid()
+        out = {"pred_logits": outputs_class[-1], "pred_boxes": outputs_coord[-1]}
+        # if self.aux_loss:
+        #     out['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord) # will we use auxiliary losses??
+        return out
 
-    losses = ['labels', 'boxes', 'cardinality']
-    criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
-                             eos_coef=args.eos_coef, losses=losses)
-    criterion.to(device)
-    postprocessors = {'bbox': PostProcess(encoder)}
 
-    return model, criterion, postprocessors
+class MLP(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim, num_layers):
+        super().__init__()
+        self.num_layers = num_layers
+        h = [hidden_dim] * (num_layers - 1)
+        self.layers = nn.ModuleList(
+            nn.Linear(n, k) for n, k in zip([input_dim] + h, h + [output_dim])
+        )
+
+    def forward(self, x):
+        for i, layer in enumerate(self.layers):
+            x = nn.ReLU(layer(x)) if i < self.num_layers - 1 else layer(x)
