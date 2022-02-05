@@ -27,3 +27,11 @@ def filter_out_uncommon_symbols(text: str) -> str:
 
 def strip_text(text: str) -> str:
     return text.strip()
+
+PIPELINE = [
+    normalize,
+    lower,
+    replace_special_characters,
+    filter_out_uncommon_symbols,
+    strip_text,
+]

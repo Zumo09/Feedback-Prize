@@ -11,13 +11,18 @@ from collections import defaultdict, deque
 import datetime
 import pickle
 from packaging import version
-from typing import Optional, List
+from typing import Dict, Optional, List
 
 import torch
 import torch.distributed as dist
 from torch import Tensor
 
+# needed due to empty tensor bug in pytorch and torchvision 0.5
 import torchvision
+if version.parse(torchvision.__version__) < version.parse('0.7'):
+    from torchvision.ops import _new_empty_tensor
+    from torchvision.ops.misc import _output_size
+
 
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a
@@ -124,7 +129,7 @@ def all_gather(data):
     return data_list
 
 
-def reduce_dict(input_dict, average=True):
+def reduce_dict(input_dict, average=True) -> Dict[str, torch.Tensor]:
     """
     Args:
         input_dict (dict): all the values will be reduced

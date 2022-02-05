@@ -24,12 +24,12 @@ def box_se_to_cl(x: torch.Tensor) -> torch.Tensor:
 def box_area(boxes: torch.Tensor) -> torch.Tensor:
     """
     Computes the area of a set of bounding boxes, which are specified by their
-    (s, e) coordinates.
+    (start, end) coordinates.
 
     Args:
         boxes (Tensor[N, 2]): boxes for which the area will be computed. They
-            are expected to be in (s, e) format with
-            ``0 <= s < e``.
+            are expected to be in (start, end) format with
+            ``0 <= start < end``.
 
     Returns:
         Tensor[N]: the area for each box
@@ -58,7 +58,7 @@ def generalized_box_iou(boxes1: torch.Tensor, boxes2: torch.Tensor) -> torch.Ten
     """
     Generalized IoU from https://giou.stanford.edu/
 
-    The boxes should be in [s, e] format
+    The boxes should be in [start, end] format
 
     Returns a [N, M] pairwise matrix, where N = len(boxes1)
     and M = len(boxes2)

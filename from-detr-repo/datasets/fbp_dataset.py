@@ -1,24 +1,17 @@
-from torch.utils.data import Dataset
-from typing import Dict, List, Callable, Optional, Tuple
-import pandas as pd
-import numpy as np
 import os
 from tqdm import tqdm
-from processing_funcs import *
 from functools import reduce
+from typing import Dict, List, Callable, Optional, Tuple
+
+import numpy as np
+import pandas as pd
 from sklearn.preprocessing import OrdinalEncoder
+
 import torch
-
-PIPELINE = [
-    normalize,
-    lower,
-    replace_special_characters,
-    filter_out_uncommon_symbols,
-    strip_text,
-]
+from torch.utils.data import Dataset
 
 
-class FPDataset(Dataset):
+class FBPDataset(Dataset):
     def __init__(
         self,
         # path: str = '../input/feedback-prize-2021/train',
