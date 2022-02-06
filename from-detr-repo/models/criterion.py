@@ -1,6 +1,4 @@
-import math
 from typing import Dict, List
-from sklearn.preprocessing import OrdinalEncoder
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -43,7 +41,7 @@ class CriterionDETR(nn.Module):
         empty_weight[-1] = self.eos_coef
         self.register_buffer("empty_weight", empty_weight)
 
-    def loss_labels(self, outputs, targets, indices, num_boxes, log=True):
+    def loss_labels(self, outputs, targets, indices, num_boxes):
         """Classification loss (NLL)
         targets dicts must contain the key "labels" containing a tensor of dim [nb_target_boxes]
         """
@@ -147,10 +145,13 @@ class CriterionDETR(nn.Module):
         # Compute the average number of target boxes accross all nodes, for normalization purposes
         # No distributed -> maybe this parameter cn be simplified
         num_boxes = sum(len(t["labels"]) for t in targets)
-        num_boxes = torch.as_tensor(
-            [num_boxes], dtype=torch.float, device=next(iter(outputs.values())).device
-        )
-        num_boxes = torch.clamp(num_boxes, min=1).item()
+        # print(num_boxes)
+        # num_boxes = torch.as_tensor(
+        #     [num_boxes], dtype=torch.float, device=next(iter(outputs.values())).device
+        # )
+        # print(num_boxes)
+        # num_boxes = torch.clamp(num_boxes, min=1).item()
+        # print(num_boxes)
 
         # Compute all the requested losses
         losses = {}

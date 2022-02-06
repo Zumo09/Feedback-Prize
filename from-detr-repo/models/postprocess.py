@@ -24,10 +24,8 @@ class PostProcess(nn.Module):
                 fs.append(s)
                 fl.append(l)
                 fb.append(b)
-                
-        return fs, fl, fb
-        
 
+        return fs, fl, fb
 
     @torch.no_grad()
     def forward(self, outputs, target_sizes):

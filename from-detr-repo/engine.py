@@ -3,16 +3,15 @@
 Train and eval functions used in main.py
 """
 import math
-import os
 import sys
-from typing import Iterable, Dict
+from tqdm import tqdm
+from typing import Iterable, Dict, Optional
 
 import torch
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard.writer import SummaryWriter
 
-import util.misc as utils
-from datasets.fbp_dataset import FBPDataset
-from datasets.fbp_evaluator import FBPEvaluator
+from datasets.fbp_dataset import FBPEvaluator
 from models.criterion import CriterionDETR
 from models.postprocess import PostProcess
 
@@ -25,18 +24,14 @@ def train_one_epoch(
     device: torch.device,
     epoch: int,
     max_norm: float = 0,
+    writer: Optional[SummaryWriter] = None,
 ):
     model.train()
     criterion.train()
-    metric_logger = utils.MetricLogger(delimiter="  ")
-    metric_logger.add_meter("lr", utils.SmoothedValue(window_size=1, fmt="{value:.6f}"))
-    metric_logger.add_meter(
-        "class_error", utils.SmoothedValue(window_size=1, fmt="{value:.2f}")
-    )
-    header = "Epoch: [{}]".format(epoch)
-    print_freq = 10
 
-    for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
+    loss_list = []
+    data_bar = tqdm(data_loader, desc=f"Train Epoch {epoch:4d}")
+    for samples, targets, info in data_bar:
         samples = samples.to(device)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
@@ -64,12 +59,21 @@ def train_one_epoch(
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)  # type: ignore
         optimizer.step()
 
-        metric_logger.update(loss=loss_value, **loss_dict_scaled, **loss_dict_unscaled)
-        metric_logger.update(class_error=loss_dict["class_error"])
-        metric_logger.update(lr=optimizer.param_groups[0]["lr"])
-
-    print("Averaged stats:", metric_logger)
-    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
+        loss_list.append(losses.item())  # type: ignore
+        data_bar.set_postfix(
+            {
+                "lr": optimizer.param_groups[0]["lr"],
+                "mean_loss": sum(loss_list) / len(loss_list),
+            }
+        )
+        if writer:
+            scalars = {
+                "lr": optimizer.param_groups[0]["lr"],
+                "loss": losses.item(),  # type: ignore
+                **loss_dict_scaled,
+                **loss_dict_unscaled,
+            }
+            writer.add_scalars("Training", scalars)
 
 
 @torch.no_grad()
@@ -77,25 +81,20 @@ def evaluate(
     model: torch.nn.Module,
     criterion: CriterionDETR,
     postprocessor: PostProcess,
+    evaluator: FBPEvaluator,
     data_loader: DataLoader,
-    base_ds,
+    epoch: int,
     device: torch.device,
-    output_dir: str,
+    tag: str = "No Tag",
+    writer: Optional[SummaryWriter] = None,
 ):
     model.eval()
     criterion.eval()
 
-    metric_logger = utils.MetricLogger(delimiter="  ")
-    metric_logger.add_meter(
-        "class_error", utils.SmoothedValue(window_size=1, fmt="{value:.2f}")
-    )
-    header = "Test:"
-
-    # iou_types = tuple(k for k in ('segm', 'bbox') if k in postprocessors.keys())
-    # coco_evaluator = CocoEvaluator(base_ds, iou_types)
-    fdp_evaluator = FBPEvaluator(base_ds)
-
-    for samples, targets in metric_logger.log_every(data_loader, 10, header):
+    loss_list = []
+    results_accuracy = []
+    data_bar = tqdm(data_loader, desc=f"Valid Epoch {epoch:4d}")
+    for samples, targets, info in data_bar:
         samples = samples.to(device)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
@@ -107,30 +106,28 @@ def evaluate(
             k: v * weight_dict[k] for k, v in loss_dict.items() if k in weight_dict
         }
         loss_dict_unscaled = {f"{k}_unscaled": v for k, v in loss_dict.items()}
-        metric_logger.update(
-            loss=sum(loss_dict_scaled.values()),
-            **loss_dict_scaled,
-            **loss_dict_unscaled,
-        )
-        metric_logger.update(class_error=loss_dict["class_error"])
+        losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)  # type: ignore
 
-        orig_target_sizes = torch.stack([t["orig_size"] for t in targets], dim=0)
+        orig_target_sizes = torch.stack([t["orig_len"] for t in info], dim=0)
         results = postprocessor(outputs, orig_target_sizes)
 
-        res = {
-            target["image_id"].item(): output
-            for target, output in zip(targets, results)
-        }
-        if fdp_evaluator is not None:
-            fdp_evaluator.update(res)
+        res_acc = evaluator(results, info)
+        results_accuracy.append(res_acc)
 
-    print("Averaged stats:", metric_logger)
+        loss_value = losses.item()  # type: ignore
+        loss_list.append(loss_value)
+        data_bar.set_postfix(
+            {
+                "mean_loss": sum(loss_list) / len(loss_list),
+                "mean_accuracy": sum(results_accuracy) / len(results_accuracy),
+            }
+        )
 
-    # accumulate predictions from all images
-    if fdp_evaluator is not None:
-        fdp_evaluator.accumulate()
-        fdp_evaluator.summarize()
-    stats = {k: meter.global_avg for k, meter in metric_logger.meters.items()}
-    # if fdp_evaluator is not None:
-    #     stats["coco_eval_bbox"] = fdp_evaluator.coco_eval["bbox"].stats.tolist()
-    return stats, fdp_evaluator
+        if writer:
+            scalars = {
+                "loss": loss_value,
+                "accuracy": res_acc,
+                **loss_dict_scaled,
+                **loss_dict_unscaled,
+            }
+            writer.add_scalars(tag, scalars)

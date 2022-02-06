@@ -1,6 +1,8 @@
-from .fbp_dataset import FBPDataset
-from .processing_funcs import PIPELINE
+from typing import Tuple
+from .fbp_dataset import FBPDataset, FBPEvaluator, build_datasets_evaluator
 
-def build_dataset(args) -> FBPDataset:
-    preprocess = PIPELINE if args.preprocessing else None
-    return FBPDataset(preprocess=preprocess)
+
+def build_train_val_datasets_evaluator(
+    args,
+) -> Tuple[FBPDataset, FBPDataset, FBPEvaluator]:
+    return build_datasets_evaluator(args.preprocessing, args.test_size, args.seed)

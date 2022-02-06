@@ -53,7 +53,6 @@ def box_iou(boxes1: torch.Tensor, boxes2: torch.Tensor) -> Tuple[torch.Tensor, t
     iou = inter / union
     return iou, union
 
-# TODO
 def generalized_box_iou(boxes1: torch.Tensor, boxes2: torch.Tensor) -> torch.Tensor:
     """
     Generalized IoU from https://giou.stanford.edu/
