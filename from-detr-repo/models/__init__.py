@@ -4,6 +4,7 @@ from .matcher import HungarianMatcher
 from .criterion import CriterionDETR
 from .postprocess import PostProcess
 
+
 def build_models(args):
     # the `num_classes` naming here is somewhat misleading.
     # it indeed corresponds to `max_obj_id + 1`, where max_obj_id
@@ -13,7 +14,7 @@ def build_models(args):
     # you should pass `num_classes` to be 2 (max_obj_id + 1).
     # For more details on this, check the following discussion
     # https://github.com/facebookresearch/detr/issues/108#issuecomment-650269223
-    num_classes = 8 # 7 + 1
+    num_classes = 8  # 7 + 1
     device = torch.device(args.device)
 
     model = DETR(
@@ -28,12 +29,20 @@ def build_models(args):
         cost_giou=args.set_cost_giou,
     )
 
-    weight_dict = {'loss_ce': 1, 'loss_bbox': args.bbox_loss_coef}
-    weight_dict['loss_giou'] = args.giou_loss_coef
+    weight_dict = {
+        "loss_ce": 1,
+        "loss_bbox": args.bbox_loss_coef,
+        "loss_giou": args.giou_loss_coef,
+    }
 
-    losses = ['labels', 'boxes', 'cardinality']
-    criterion = CriterionDETR(num_classes, matcher=matcher, weight_dict=weight_dict,
-                             eos_coef=args.eos_coef, losses=losses)
+    losses = ["labels", "boxes", "cardinality"]
+    criterion = CriterionDETR(
+        num_classes,
+        matcher=matcher,
+        weight_dict=weight_dict,
+        eos_coef=args.eos_coef,
+        losses=losses,
+    )
     criterion.to(device)
     postprocessor = PostProcess()
 
