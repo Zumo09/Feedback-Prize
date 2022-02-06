@@ -10,7 +10,7 @@ from .matcher import HungarianMatcher
 from util import box_ops
 
 
-class SetCriterion(nn.Module):
+class CriterionDETR(nn.Module):
     """This class computes the loss for DETR.
     The process happens in two steps:
         1) we compute hungarian assignment between ground truth boxes and the outputs of the model

@@ -1,7 +1,7 @@
 import torch
 from .detr import DETR
 from .matcher import HungarianMatcher
-from .criterion import SetCriterion
+from .criterion import CriterionDETR
 from .postprocess import PostProcess
 
 def build_models(args):
@@ -32,9 +32,9 @@ def build_models(args):
     weight_dict['loss_giou'] = args.giou_loss_coef
 
     losses = ['labels', 'boxes', 'cardinality']
-    criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
+    criterion = CriterionDETR(num_classes, matcher=matcher, weight_dict=weight_dict,
                              eos_coef=args.eos_coef, losses=losses)
     criterion.to(device)
-    postprocessors = {'bbox': PostProcess()}
+    postprocessor = PostProcess()
 
-    return model, criterion, postprocessors
+    return model, criterion, postprocessor
