@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 
 import util.misc as utils
-from datasets import build_train_val_datasets_evaluator
+from datasets import build_fdb_data
 from engine import evaluate, train_one_epoch
 from models import build_models
 
@@ -132,6 +132,7 @@ def get_args_parser():
     )
 
     # dataset parameters
+    parser.add_argument("--input_path", default="./input/feedback-prize-2021/", type=str, help='Folder where the inputs are')
     parser.add_argument(
         "--device", default="cuda", help="device to use for training / testing"
     )
@@ -156,7 +157,7 @@ def main(args):
     np.random.seed(seed)
     random.seed(seed)
 
-    model, criterion, postprocessors = build_models(args)
+    model, criterion = build_models(args)
     model.to(device)
 
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -184,7 +185,7 @@ def main(args):
     )
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_drop)
 
-    dataset_train, dataset_val, evaluator = build_train_val_datasets_evaluator(args)
+    dataset_train, dataset_val, postprocessor = build_fdb_data(args)
 
     data_loader_train = DataLoader(
         dataset_train,
@@ -258,12 +259,12 @@ def main(args):
                     },
                     checkpoint_path,
                 )
-
+        
+        postprocessor.reset_results()
         evaluate(
             model=model,
             criterion=criterion,
-            postprocessor=postprocessors,
-            evaluator=evaluator,
+            postprocessor=postprocessor,
             data_loader=data_loader_val,
             epoch=epoch,
             device=device,

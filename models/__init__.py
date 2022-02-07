@@ -2,7 +2,6 @@ import torch
 from .detr import DETR
 from .matcher import HungarianMatcher
 from .criterion import CriterionDETR
-from .postprocess import PostProcess
 
 
 def build_models(args):
@@ -44,6 +43,5 @@ def build_models(args):
         losses=losses,
     )
     criterion.to(device)
-    postprocessor = PostProcess()
 
-    return model, criterion, postprocessor
+    return model, criterion

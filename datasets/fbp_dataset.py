@@ -6,12 +6,10 @@ from typing import Dict, List, Callable, Tuple
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import OrdinalEncoder
-from sklearn.model_selection import train_test_split
 
 import torch
+import torch.nn.functional as F
 from torch.utils.data import Dataset
-
-from .processing_funcs import PIPELINE
 
 
 class FBPDataset(Dataset):
@@ -46,7 +44,7 @@ class FBPDataset(Dataset):
         tag_boxes = self.map_pred(doc_tags["predictionstring"], len_sequence)
 
         target = {"labels": tag_cats, "boxes": tag_boxes}
-        info = {"id": doc_name, "origin_len": len_sequence}
+        info = {"id": doc_name, "length": len_sequence}
 
         return document, target, info # type: ignore
 
@@ -60,17 +58,6 @@ class FBPDataset(Dataset):
             tag_boxes.append([torch.mean(p) / len_sequence, p.size()[0] / len_sequence])
 
         return torch.Tensor(tag_boxes)
-
-
-class FBPEvaluator:
-    def __init__(self, encoder: OrdinalEncoder) -> None:
-        self.encoder = encoder
-    
-    def __call__(self, predictions, targets):
-        """
-        Evaluate the predictions based on the metrics of Kaggle
-        """
-        return 0
 
 
 def load_texts(
@@ -89,22 +76,4 @@ def load_texts(
     tags = pd.read_csv(os.path.join(path, "train.csv"), dtype=types)
 
     return pd.Series(documents), tags  # type: ignore
-
-
-def build_datasets_evaluator(preprocessing: bool, test_size: float, random_state: int) -> Tuple[FBPDataset, FBPDataset, FBPEvaluator]:
-    preprocess = PIPELINE if preprocessing else []
-    documents, tags = load_texts("../input/feedback-prize-2021/", preprocess) # type: ignore
-
-    encoder = OrdinalEncoder()
-    label_unique = np.array(tags["discourse_type"].unique())  # type: ignore
-    encoder.fit(label_unique.reshape(-1, 1))
-
-    train_idx, val_idx = train_test_split(documents.index, test_size=test_size, random_state=random_state)
-
-    train_dataset = FBPDataset(documents[train_idx], tags, encoder) # type:ignore
-    val_dataset = FBPDataset(documents[val_idx], tags, encoder) # type:ignore
-
-    evaluator = FBPEvaluator(encoder)
-
-    return train_dataset, val_dataset, evaluator
     
