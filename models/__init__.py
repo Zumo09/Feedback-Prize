@@ -2,7 +2,7 @@ import torch
 from .detr import DETR
 from .matcher import HungarianMatcher
 from .criterion import CriterionDETR
-
+from transformers import LEDModel
 
 def build_models(num_classes:int, args):
     # the `num_classes` naming here is somewhat misleading.
@@ -16,6 +16,7 @@ def build_models(num_classes:int, args):
     device = torch.device(args.device)
 
     model = DETR(
+        model = LEDModel.from_pretrained('allenai/led-base-16384')
         num_classes=num_classes,
         hidden_dim=args.hidden_dim,
         num_queries=args.num_queries,
