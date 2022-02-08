@@ -6,10 +6,10 @@ from transformers import LEDModel
 
 class Transformer(nn.Module):
 
-    def __init__(self):
+    def __init__(self, model):
         super().__init__()
 
-        self.model = LEDModel.from_pretrained('allenai/led-base-16384')
+        self.model = model
         self.encoder = self.model.encoder
         self.decoder = self.model.decoder
 
