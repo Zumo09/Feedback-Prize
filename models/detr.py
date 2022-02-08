@@ -1,16 +1,17 @@
 import torch
 from torch import nn, Tensor
 import torch.nn.functional as F
+from transformers import LEDModel
 
 
 class Transformer(nn.Module):
 
-    def __init__(self, model):
+    def __init__(self):
         super().__init__()
 
-        self.model = model
-        self.encoder = model.encoder
-        self.decoder = model.decoder
+        self.model = LEDModel.from_pretrained('allenai/led-base-16384')
+        self.encoder = self.model.encoder
+        self.decoder = self.model.decoder
 
     def forward(self, enc_input_ids, query_embed):
 
@@ -25,10 +26,10 @@ class Transformer(nn.Module):
 
 class DETR(nn.Module):
 
-    def __init__(self, model, num_classes, num_queries, hidden_dim=768):
+    def __init__(self, num_classes, num_queries, hidden_dim=768):
         super().__init__()
 
-        self.transformer = Transformer(model)
+        self.transformer = Transformer()
         # prediction heads, one extra class for predicting non-empty slots
         # note that in baseline DETR linear_bbox layer is 3-layer MLP
         self.linear_class = nn.Linear(hidden_dim, num_classes + 1)
