@@ -158,31 +158,31 @@ def main(args):
 
     dataset_train, dataset_val, postprocessor, num_classes = build_fdb_data(args)
 
-    model, criterion = build_models(num_classes + 1, args)
+    tokenizer, model, criterion = build_models(num_classes, args)
     model.to(device)
 
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("number of params:", n_parameters)
 
-    param_dicts = [
-        {
-            "params": [
-                p
-                for n, p in model.named_parameters()
-                if "backbone" not in n and p.requires_grad
-            ]
-        },
-        {
-            "params": [
-                p
-                for n, p in model.named_parameters()
-                if "backbone" in n and p.requires_grad
-            ],
-            "lr": args.lr_backbone,
-        },
-    ]
+    # param_dicts = [
+    #     {
+    #         "params": [
+    #             p
+    #             for n, p in model.named_parameters()
+    #             if "backbone" not in n and p.requires_grad
+    #         ]
+    #     },
+    #     {
+    #         "params": [
+    #             p
+    #             for n, p in model.named_parameters()
+    #             if "backbone" in n and p.requires_grad
+    #         ],
+    #         "lr": args.lr_backbone,
+    #     },
+    # ]
     optimizer = torch.optim.AdamW(
-        param_dicts, lr=args.lr, weight_decay=args.weight_decay
+        model.parameters(), lr=args.lr, weight_decay=args.weight_decay
     )
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_drop)
 
@@ -232,6 +232,7 @@ def main(args):
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
         train_one_epoch(
+            tokenizer=tokenizer,
             model=model,
             criterion=criterion,
             data_loader=data_loader_train,
@@ -261,6 +262,7 @@ def main(args):
         
         postprocessor.reset_results()
         evaluate(
+            tokenizer=tokenizer,
             model=model,
             criterion=criterion,
             postprocessor=postprocessor,

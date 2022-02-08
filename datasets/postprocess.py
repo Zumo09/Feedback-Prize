@@ -4,8 +4,11 @@ import torch
 import torch.nn.functional as F
 
 import pandas as pd
+import numpy as np
 
 from util import box_ops
+
+from scipy.optimize import linear_sum_assignment
 
 
 class FBPPostProcess:
@@ -16,6 +19,14 @@ class FBPPostProcess:
         self.tags = tags
         self.no_obj_class = no_obj_class
         self.reset_results()
+
+    @property
+    def results(self) -> pd.DataFrame:
+        """The DataFrame to be submitted for the challenge
+        """
+        if len(self._results) == 0:
+            return pd.DataFrame(columns=['id', 'class', 'predictionstring', 'score'])
+        return pd.DataFrame(self._results)
 
     def reset_results(self):
         self._results = []
@@ -31,13 +42,24 @@ class FBPPostProcess:
         f1 = tp / (tp + 0.5 * (fp + fn) + 1e-3)
         return {'precision': prec, 'recall': recall, 'f1': f1}
 
-    @property
-    def results(self) -> pd.DataFrame:
-        """The DataFrame to be submitted for the challenge
-        """
-        if len(self._results) == 0:
-            return pd.DataFrame(columns=['id', 'class', 'predictionstring', 'score'])
-        return pd.DataFrame(self._results)
+    def _evaluate_doc_class(self, pred, tags):
+        lp = len(pred)
+        lt = len(tags)
+        overlaps = np.zeros(shape=(lp, lt))
+        p_sets = [self._predstr_to_set(ps) for ps in pred['predictionstring']]
+        t_sets = [self._predstr_to_set(ps) for ps in tags['predictionstring']]
+
+        for p in range(lp):
+            p_set = p_sets[p]
+            for t in range(lt):
+                t_set = t_sets[t]
+                overlaps[p, t] = len(p_set.intersection(t_set)) / len(t_set)
+        
+        pi, ti = linear_sum_assignment(overlaps, maximize=True)
+        tp = (overlaps[pi, ti] >= 0.5).sum()
+        fp = max(0, lp - tp)
+        fn = max(0, lt - lp)
+        return tp, fp, fn
     
     def evaluate(self):
         """
@@ -46,21 +68,28 @@ class FBPPostProcess:
         results = self.results
         gb_res = results.groupby(by='id')
         gb_tag = self.tags.groupby(by='id')
+
         report = {}
         for cls in self.tags['discourse_type'].unique():
             tp, fp, fn = 0, 0, 0
             for doc_id in results['id'].unique():
-                predictions = results[]
-                
+                pred = gb_res.get_group(doc_id)
+                tags = gb_tag.get_group(doc_id)
 
-
+                pred = pred[pred['class'] == cls]        
+                tags = tags[tags['discourse_type'] == cls]
+                a, b, c = self._evaluate_doc_class(pred, tags)
+                tp += a
+                fp += b
+                fn += c
             report[cls] = self.prec_rec_f1(tp, fp, fn)
+
         report['macro_avg'] = {
             'precision': sum(cls_rep['precision'] for cls_rep in report.values()) / len(report),
             'recall': sum(cls_rep['recall'] for cls_rep in report.values()) / len(report),
             'f1': sum(cls_rep['f1'] for cls_rep in report.values()) / len(report)
         }
-        return report
+        return pd.DataFrame(report).transpose()
 
 
     @torch.no_grad()

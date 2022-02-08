@@ -11,11 +11,12 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 
-from models.criterion import CriterionDETR
-from datasets.postprocess import FBPPostProcess
+from models import CriterionDETR, PrepareInputs
+from datasets import FBPPostProcess
 
 
 def train_one_epoch(
+    tokenizer: PrepareInputs,
     model: torch.nn.Module,
     criterion: CriterionDETR,
     data_loader: Iterable,
@@ -31,10 +32,10 @@ def train_one_epoch(
     loss_list = []
     data_bar = tqdm(data_loader, desc=f"Train Epoch {epoch:4d}")
     for samples, targets, info in data_bar:
-        samples = samples.to(device)
+        inputs = tokenizer(samples).to(device)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
-        outputs = model(samples)
+        outputs = model(inputs)
         loss_dict = criterion(outputs, targets)  # type: Dict[str, torch.Tensor]
         weight_dict = criterion.weight_dict
         losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)  # type: ignore
@@ -77,6 +78,7 @@ def train_one_epoch(
 
 @torch.no_grad()
 def evaluate(
+    tokenizer: PrepareInputs,
     model: torch.nn.Module,
     criterion: CriterionDETR,
     postprocessor: FBPPostProcess,
@@ -92,10 +94,10 @@ def evaluate(
     loss_list = []
     data_bar = tqdm(data_loader, desc=f"Valid Epoch {epoch:4d}")
     for samples, targets, infos in data_bar:
-        samples = samples.to(device)
+        inputs = tokenizer(samples).to(device)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
-        outputs = model(samples)
+        outputs = model(inputs)
         loss_dict = criterion(outputs, targets)
         weight_dict = criterion.weight_dict
 

@@ -60,3 +60,22 @@ class MLP(nn.Module):
         for i, layer in enumerate(self.layers):
             x = F.relu(layer(x)) if i < self.num_layers - 1 else layer(x)
         return x
+
+# class PrepareInputs(nn.Module):
+#     def __init__(self, tokenizer):
+#         super().__init__()
+#         self.tokenizer = tokenizer
+
+#     @torch.no_grad()
+#     def forward(self, docs):
+#         tokens = [self.tokenizer(text, return_tensors="pt").input_ids for text in docs]
+#         return torch.nn.utils.rnn.pad_sequence(tokens, batch_first=True, padding_value=0.0)
+
+
+class PrepareInputs:
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+
+    def __call__(self, docs):
+        tokens = [self.tokenizer(text, return_tensors="pt").input_ids for text in docs]
+        return torch.nn.utils.rnn.pad_sequence(tokens, batch_first=True, padding_value=0.0)
