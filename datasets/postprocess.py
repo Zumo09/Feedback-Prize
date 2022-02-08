@@ -20,10 +20,16 @@ class FBPPostProcess:
     def reset_results(self):
         self._results = []
 
-    def evaluate(self):
-        """
-        Evaluation metric defined by the Kaggle Challenge
-        """
+    @staticmethod
+    def _predstr_to_set(pred: str):
+        return set(int(i) for i in pred.split())
+
+    @staticmethod
+    def prec_rec_f1(tp, fp, fn):
+        prec = tp / (tp + fp + 1e-3)
+        recall = tp / (tp + fn + 1e-3)
+        f1 = tp / (tp + 0.5 * (fp + fn) + 1e-3)
+        return {'precision': prec, 'recall': recall, 'f1': f1}
 
     @property
     def results(self) -> pd.DataFrame:
@@ -32,6 +38,30 @@ class FBPPostProcess:
         if len(self._results) == 0:
             return pd.DataFrame(columns=['id', 'class', 'predictionstring', 'score'])
         return pd.DataFrame(self._results)
+    
+    def evaluate(self):
+        """
+        Evaluation metric defined by the Kaggle Challenge
+        """
+        results = self.results
+        gb_res = results.groupby(by='id')
+        gb_tag = self.tags.groupby(by='id')
+        report = {}
+        for cls in self.tags['discourse_type'].unique():
+            tp, fp, fn = 0, 0, 0
+            for doc_id in results['id'].unique():
+                predictions = results[]
+                
+
+
+            report[cls] = self.prec_rec_f1(tp, fp, fn)
+        report['macro_avg'] = {
+            'precision': sum(cls_rep['precision'] for cls_rep in report.values()) / len(report),
+            'recall': sum(cls_rep['recall'] for cls_rep in report.values()) / len(report),
+            'f1': sum(cls_rep['f1'] for cls_rep in report.values()) / len(report)
+        }
+        return report
+
 
     @torch.no_grad()
     def add_outputs(self, outputs, infos):
@@ -78,4 +108,4 @@ class FBPPostProcess:
     @staticmethod
     def prediction_string(box):
         start, end = box
-        return " ".join(str(i) for i in range(start, end))
+        return " ".join(str(i) for i in range(start, end+1))

@@ -46,7 +46,7 @@ def highlight_segments(id_example: str, text: str, tags: pd.DataFrame):
     splitted_text = text.split()
     tags = tags[tags['id'] == id_example]
     try:
-        labels = f"{tags['class']} ({tags['score']})"
+        labels = tags['class']
     except KeyError:
         labels = tags['discourse_type']
 
