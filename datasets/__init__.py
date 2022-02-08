@@ -23,9 +23,10 @@ def build_fdb_data(args):
     train_dataset = FBPDataset(documents[train_idx], tags, encoder)  # type:ignore
     val_dataset = FBPDataset(documents[val_idx], tags, encoder)  # type:ignore
 
-    postprocessor = FBPPostProcess(encoder, tags)
+    num_classes = len(label_unique)
+    postprocessor = FBPPostProcess(encoder, tags, num_classes)
 
-    return train_dataset, val_dataset, postprocessor
+    return train_dataset, val_dataset, postprocessor, num_classes
 
 def collate_fn(batch):
     return tuple(list(i) for i in zip(*batch))

@@ -11,8 +11,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 
-import util.misc as utils
-from datasets import build_fdb_data
+from datasets import build_fdb_data, collate_fn
 from engine import evaluate, train_one_epoch
 from models import build_models
 
@@ -157,7 +156,9 @@ def main(args):
     np.random.seed(seed)
     random.seed(seed)
 
-    model, criterion = build_models(args)
+    dataset_train, dataset_val, postprocessor, num_classes = build_fdb_data(args)
+
+    model, criterion = build_models(num_classes + 1, args)
     model.to(device)
 
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -185,13 +186,11 @@ def main(args):
     )
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_drop)
 
-    dataset_train, dataset_val, postprocessor = build_fdb_data(args)
-
     data_loader_train = DataLoader(
         dataset_train,
         shuffle=True,
         batch_size=args.batch_size,
-        collate_fn=utils.collate_fn,
+        collate_fn=collate_fn,
         num_workers=args.num_workers,
     )
     data_loader_val = DataLoader(
@@ -199,7 +198,7 @@ def main(args):
         shuffle=False,
         batch_size=args.batch_size,
         drop_last=False,
-        collate_fn=utils.collate_fn,
+        collate_fn=collate_fn,
         num_workers=args.num_workers,
     )
 

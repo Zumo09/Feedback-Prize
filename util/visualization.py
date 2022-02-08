@@ -1,5 +1,4 @@
-import math
-from typing import Iterable
+import pandas as pd
 from spacy import displacy
 
 # Credits for this part of visualisation _> https://www.kaggle.com/thedrcat
@@ -26,27 +25,37 @@ OPTIONS = {
 }
 
 
-def highlight_segments_dataset(id_example: str, dataset):
-    text = dataset.documents[id_example]
-    ents = []
-    for _, row in dataset.tags[dataset.tags["id"] == id_example].iterrows():  # type: ignore
-        ents.append(
-            {
-                "start": int(row["discourse_start"]),
-                "end": int(row["discourse_end"]),
-                "label": row["discourse_type"],
-            }
-        )
+# def highlight_segments_dataset(id_example: str, dataset):
+#     text = dataset.documents[id_example]
+#     ents = []
+#     for _, row in dataset.tags[dataset.tags["id"] == id_example].iterrows():  # type: ignore
+#         ents.append(
+#             {
+#                 "start": int(row["discourse_start"]),
+#                 "end": int(row["discourse_end"]),
+#                 "label": row["discourse_type"],
+#             }
+#         )
 
-    doc2 = {"text": text, "ents": ents, "title": id_example}
+#     doc2 = {"text": text, "ents": ents, "title": id_example}
 
-    displacy.render(doc2, style="ent", options=OPTIONS, manual=True, jupyter=True)
+#     displacy.render(doc2, style="ent", options=OPTIONS, manual=True, jupyter=True)
 
 
-def highlight_segments(text: str, labels, boxes, title: str = 'Document'):
+def highlight_segments(id_example: str, text: str, tags: pd.DataFrame):
     splitted_text = text.split()
+    tags = tags[tags['id'] == id_example]
+    try:
+        labels = tags['class']
+    except KeyError:
+        labels = tags['discourse_type']
 
-    assert len(labels) == len(boxes), f'Labels and boxes of different length {len(labels)=}, {len(boxes)=}'
+    indexes = [
+        [int(i) for i in pred.split()]
+        for pred in tags['predictionstring']
+    ]
+
+    boxes = [(i[0], i[-1]) for i in indexes]
 
     len_words_inc = [0]
     cont = 0
@@ -55,15 +64,44 @@ def highlight_segments(text: str, labels, boxes, title: str = 'Document'):
         cont += max(0, idx)
         len_words_inc.append(cont + len(word))
     len_words_inc.append(len(text))
+    len_words_inc.append(len(text))
+    len_words_inc.append(len(text))
+    len_words_inc.append(len(text))
 
     ents = [
         {
             "start": len_words_inc[start],
-            "end": len_words_inc[end + 1],
+            "end": len_words_inc[end],
             "label": label,
         }
         for label, (start, end) in zip(labels, boxes)
     ]
 
-    doc2 = {"text": text, "ents": ents, "title": title}
+    doc2 = {"text": text, "ents": ents, "title": id_example}
     displacy.render(doc2, style="ent", options=OPTIONS, manual=True, jupyter=True)
+
+
+# def highlight_segments_plo(text: str, labels, boxes, title: str = 'Document'):
+#     splitted_text = text.split()
+
+#     assert len(labels) == len(boxes), f'Labels and boxes of different length {len(labels)=}, {len(boxes)=}'
+
+#     len_words_inc = [0]
+#     cont = 0
+#     for word in splitted_text:
+#         idx = text[cont:].find(word)
+#         cont += max(0, idx)
+#         len_words_inc.append(cont + len(word))
+#     len_words_inc.append(len(text))
+
+#     ents = [
+#         {
+#             "start": len_words_inc[start],
+#             "end": len_words_inc[end + 1],
+#             "label": label,
+#         }
+#         for label, (start, end) in zip(labels, boxes)
+#     ]
+
+#     doc2 = {"text": text, "ents": ents, "title": title}
+#     displacy.render(doc2, style="ent", options=OPTIONS, manual=True, jupyter=True)

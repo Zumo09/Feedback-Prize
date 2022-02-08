@@ -4,7 +4,7 @@ from .matcher import HungarianMatcher
 from .criterion import CriterionDETR
 
 
-def build_models(args):
+def build_models(num_classes:int, args):
     # the `num_classes` naming here is somewhat misleading.
     # it indeed corresponds to `max_obj_id + 1`, where max_obj_id
     # is the maximum id for a class in your dataset. For example,
@@ -13,7 +13,6 @@ def build_models(args):
     # you should pass `num_classes` to be 2 (max_obj_id + 1).
     # For more details on this, check the following discussion
     # https://github.com/facebookresearch/detr/issues/108#issuecomment-650269223
-    num_classes = 8  # 7 + 1
     device = torch.device(args.device)
 
     model = DETR(
