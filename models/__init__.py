@@ -9,7 +9,7 @@ def build_models(num_classes:int, args):
 
     model = DETR(
         model = LEDModel.from_pretrained('allenai/led-base-16384'),
-        num_classes=num_classes + 1,
+        num_classes=num_classes,
         hidden_dim=args.hidden_dim,
         num_queries=args.num_queries,
     )

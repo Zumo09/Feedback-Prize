@@ -18,6 +18,8 @@ class Transformer(nn.Module):
         tgt = torch.zeros_like(query_embed)
         tgt = tgt.unsqueeze(-1).permute(2, 0, 1)
         tgt = tgt + query_embed
+        print(tgt.size())
+        print(enc["last_hidden_state"].size())
         dec = self.decoder(
             inputs_embeds=tgt, encoder_hidden_states=enc["last_hidden_state"]
         )
@@ -26,17 +28,17 @@ class Transformer(nn.Module):
 
 
 class DETR(nn.Module):
-    def __init__(self, model, num_classes, num_queries, hidden_dim=768):
+    def __init__(self, model, num_classes, num_queries, hidden_dim, encoder_hd=768):
         super().__init__()
 
         self.transformer = Transformer(model)
         # prediction heads, one extra class for predicting non-empty slots
         # note that in baseline DETR linear_bbox layer is 3-layer MLP
-        self.linear_class = nn.Linear(hidden_dim, num_classes + 1)
-        self.linear_bbox = MLP(hidden_dim, hidden_dim, 2, 3)
-        self.query_embed = nn.Embedding(num_queries, hidden_dim)
+        self.linear_class = nn.Linear(encoder_hd, num_classes + 1)
+        self.linear_bbox = MLP(encoder_hd, hidden_dim, 2, 3)
+        self.query_embed = nn.Embedding(num_queries, encoder_hd)
         # output positional encodings (object queries)
-        self.query_pos = nn.parameter.Parameter(torch.rand(100, hidden_dim))
+        self.query_pos = nn.parameter.Parameter(torch.rand(100, encoder_hd))
 
     def forward(self, inputs_ids):
         h = self.transformer(inputs_ids, self.query_embed.weight)["last_hidden_state"]
