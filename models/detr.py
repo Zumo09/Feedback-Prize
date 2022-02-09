@@ -1,3 +1,4 @@
+from lib2to3.pgen2 import token
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -77,5 +78,5 @@ class PrepareInputs:
         self.tokenizer = tokenizer
 
     def __call__(self, docs):
-        tokens = [self.tokenizer(text, return_tensors="pt").input_ids for text in docs]
+        tokens = [self.tokenizer(text, return_tensors="pt").input_ids.squeeze() for text in docs]
         return torch.nn.utils.rnn.pad_sequence(tokens, batch_first=True, padding_value=0.0)
