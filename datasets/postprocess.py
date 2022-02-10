@@ -13,7 +13,10 @@ from scipy.optimize import linear_sum_assignment
 
 class FBPPostProcess:
     """This module converts the model's output into the format expected by the Kaggle api"""
-    def __init__(self, encoder: OrdinalEncoder, tags: pd.DataFrame, no_obj_class: int) -> None:
+
+    def __init__(
+        self, encoder: OrdinalEncoder, tags: pd.DataFrame, no_obj_class: int
+    ) -> None:
         super().__init__()
         self.encoder = encoder
         self.tags = tags
@@ -22,10 +25,9 @@ class FBPPostProcess:
 
     @property
     def results(self) -> pd.DataFrame:
-        """The DataFrame to be submitted for the challenge
-        """
+        """The DataFrame to be submitted for the challenge"""
         if len(self._results) == 0:
-            return pd.DataFrame(columns=['id', 'class', 'predictionstring', 'score'])
+            return pd.DataFrame(columns=["id", "class", "predictionstring", "score"])
         return pd.DataFrame(self._results)
 
     def reset_results(self):
@@ -40,57 +42,58 @@ class FBPPostProcess:
         prec = tp / (tp + fp + 1e-3)
         recall = tp / (tp + fn + 1e-3)
         f1 = tp / (tp + 0.5 * (fp + fn) + 1e-3)
-        return {'precision': prec, 'recall': recall, 'f1': f1}
+        return {"precision": prec, "recall": recall, "f1": f1}
 
     def _evaluate_doc_class(self, pred, tags):
         lp = len(pred)
         lt = len(tags)
         overlaps = np.zeros(shape=(lp, lt))
-        p_sets = [self._predstr_to_set(ps) for ps in pred['predictionstring']]
-        t_sets = [self._predstr_to_set(ps) for ps in tags['predictionstring']]
+        p_sets = [self._predstr_to_set(ps) for ps in pred["predictionstring"]]
+        t_sets = [self._predstr_to_set(ps) for ps in tags["predictionstring"]]
 
         for p in range(lp):
             p_set = p_sets[p]
             for t in range(lt):
                 t_set = t_sets[t]
                 overlaps[p, t] = len(p_set.intersection(t_set)) / len(t_set)
-        
+
         pi, ti = linear_sum_assignment(overlaps, maximize=True)
         tp = (overlaps[pi, ti] >= 0.5).sum()
         fp = max(0, lp - tp)
         fn = max(0, lt - lp)
         return tp, fp, fn
-    
+
     def evaluate(self):
         """
         Evaluation metric defined by the Kaggle Challenge
         """
         results = self.results
-        gb_res = results.groupby(by='id')
-        gb_tag = self.tags.groupby(by='id')
+        gb_res = results.groupby(by="id")
+        gb_tag = self.tags.groupby(by="id")
 
         report = {}
-        for cls in self.tags['discourse_type'].unique():
+        for cls in self.tags["discourse_type"].unique():
             tp, fp, fn = 0, 0, 0
-            for doc_id in results['id'].unique():
+            for doc_id in results["id"].unique():
                 pred = gb_res.get_group(doc_id)
                 tags = gb_tag.get_group(doc_id)
 
-                pred = pred[pred['class'] == cls]        
-                tags = tags[tags['discourse_type'] == cls]
+                pred = pred[pred["class"] == cls]
+                tags = tags[tags["discourse_type"] == cls]
                 a, b, c = self._evaluate_doc_class(pred, tags)
                 tp += a
                 fp += b
                 fn += c
             report[cls] = self.prec_rec_f1(tp, fp, fn)
 
-        report['macro_avg'] = {
-            'precision': sum(cls_rep['precision'] for cls_rep in report.values()) / len(report),
-            'recall': sum(cls_rep['recall'] for cls_rep in report.values()) / len(report),
-            'f1': sum(cls_rep['f1'] for cls_rep in report.values()) / len(report)
+        report["macro_avg"] = {
+            "precision": sum(cls_rep["precision"] for cls_rep in report.values())
+            / len(report),
+            "recall": sum(cls_rep["recall"] for cls_rep in report.values())
+            / len(report),
+            "f1": sum(cls_rep["f1"] for cls_rep in report.values()) / len(report),
         }
         return pd.DataFrame(report).transpose()
-
 
     @torch.no_grad()
     def add_outputs(self, outputs, infos):
@@ -121,20 +124,21 @@ class FBPPostProcess:
         for i, l, s, b in zip(infos, labels, scores, boxes):
             self._add(i, l, s, b)
 
-
     def _add(self, info, labels, scores, boxes):
-        doc_id = info['id']
+        doc_id = info["id"]
         for l, s, b in zip(labels, scores, boxes):
             if l != self.no_obj_class:
                 l = self.encoder.inverse_transform(l.reshape(-1, 1))
-                self._results.append({
-                    'id': doc_id,
-                    'class': l[0][0],
-                    'predictionstring': self.prediction_string(b),
-                    'score': s.item()
-                })
-    
+                self._results.append(
+                    {
+                        "id": doc_id,
+                        "class": l[0][0],
+                        "predictionstring": self.prediction_string(b),
+                        "score": s.item(),
+                    }
+                )
+
     @staticmethod
     def prediction_string(box):
         start, end = box
-        return " ".join(str(i) for i in range(start, end+1))
+        return " ".join(str(i) for i in range(start, end + 1))

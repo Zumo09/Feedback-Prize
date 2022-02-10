@@ -28,5 +28,6 @@ def build_fdb_data(args):
 
     return train_dataset, val_dataset, postprocessor, num_classes
 
+
 def collate_fn(batch):
     return tuple(list(i) for i in zip(*batch))

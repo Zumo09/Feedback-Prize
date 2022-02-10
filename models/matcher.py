@@ -68,7 +68,6 @@ class HungarianMatcher(nn.Module):
         tgt_ids = torch.cat([v["labels"].reshape(-1) for v in targets])
         tgt_bbox = torch.cat([v["boxes"] for v in targets])
 
-
         # Compute the classification cost. Contrary to the loss, we don't use the NLL,
         # but approximate it in 1 - proba[target class].
         # The 1 is a constant that doesn't change the matching, it can be ommitted.
@@ -91,7 +90,7 @@ class HungarianMatcher(nn.Module):
         final_cost_matrix = final_cost_matrix.view(bs, num_queries, -1).cpu()
 
         sizes = [len(v["boxes"]) for v in targets]
-        
+
         indices = [
             linear_sum_assignment(c[i])
             for i, c in enumerate(final_cost_matrix.split(sizes, -1))

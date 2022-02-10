@@ -2,20 +2,21 @@ import torch
 from .detr import DETR, PrepareInputs
 from .matcher import HungarianMatcher
 from .criterion import CriterionDETR
-from transformers import LEDModel, LEDTokenizerFast # type: ignore
+from transformers import LEDModel, LEDTokenizerFast  # type: ignore
 
-def build_models(num_classes:int, args):
+
+def build_models(num_classes: int, args):
     device = torch.device(args.device)
 
     model = DETR(
-        model = LEDModel.from_pretrained('allenai/led-base-16384'),
+        model=LEDModel.from_pretrained("allenai/led-base-16384"),
         num_classes=num_classes,
         hidden_dim=args.hidden_dim,
         num_queries=args.num_queries,
     )
 
     tokenizer = PrepareInputs(
-        tokenizer=LEDTokenizerFast.from_pretrained('allenai/led-base-16384')
+        tokenizer=LEDTokenizerFast.from_pretrained("allenai/led-base-16384")
     )
 
     matcher = HungarianMatcher(
