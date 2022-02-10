@@ -112,11 +112,19 @@ def evaluate(
     loss_list = []
     data_bar = tqdm(data_loader, desc=f"Valid Epoch {epoch:4d}")
     for samples, targets, infos in data_bar:
-        inputs = tokenizer(samples).to(device)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
-        outputs = model(inputs)
-        loss_dict = criterion(outputs, targets)
+        outputs = []
+        for doc in samples:
+            inputs = tokenizer([doc]).to(device)
+            outputs.append(model(inputs))
+        
+        batch_outputs = {
+            key: torch.cat([o[key] for o in outputs])
+            for key in outputs[0].keys()
+        }
+        
+        loss_dict = criterion(batch_outputs, targets)  # type: Dict[str, torch.Tensor]
         weight_dict = criterion.weight_dict
 
         # loss_dict_scaled = {
@@ -125,14 +133,16 @@ def evaluate(
         # loss_dict_unscaled = {f"{k}_unscaled": v for k, v in loss_dict.items()}
         losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)  # type: ignore
 
-        postprocessor.add_outputs(outputs, infos)
+        postprocessor.add_outputs(batch_outputs, infos)
 
         loss_value = losses.item()  # type: ignore
         loss_list.append(loss_value)
 
     loss = sum(loss_list) / len(loss_list)
-    accuracy = postprocessor.evaluate()
-    scalars = {"loss": loss, "accuracy": accuracy}
+    report = postprocessor.evaluate()
+    scalars = {"loss": loss, "accuracy": report['f1']['macro_avg']}
     data_bar.set_postfix(scalars)
     if writer:
         writer.add_scalars(tag, scalars)
+    
+    return report
