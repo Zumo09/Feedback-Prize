@@ -4,6 +4,7 @@ Train and eval functions used in main.py
 """
 import math
 import sys
+import time
 from tqdm import tqdm
 from typing import Iterable, Dict, Optional
 
@@ -32,11 +33,24 @@ def train_one_epoch(
     loss_list = []
     data_bar = tqdm(data_loader, desc=f"Train Epoch {epoch:4d}")
     for samples, targets, info in data_bar:
-        inputs = tokenizer(samples).to(device)
+        st = time.time()
+        
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
-        outputs = model(inputs)
-        loss_dict = criterion(outputs, targets)  # type: Dict[str, torch.Tensor]
+        outputs = []
+        for doc in samples:
+            inputs = tokenizer([doc]).to(device)
+            outputs.append(model(inputs))
+        
+        batch_outputs = {
+            key: torch.cat([o[key] for o in outputs])
+            for key in outputs[0].keys()
+        }
+        
+        loss_dict = criterion(batch_outputs, targets)  # type: Dict[str, torch.Tensor]
+
+        mt = time.time()
+
         weight_dict = criterion.weight_dict
         losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)  # type: ignore
 
@@ -59,11 +73,15 @@ def train_one_epoch(
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)  # type: ignore
         optimizer.step()
 
+        ot = time.time()
+
         loss_list.append(losses.item())  # type: ignore
         data_bar.set_postfix(
             {
                 "lr": optimizer.param_groups[0]["lr"],
                 "mean_loss": sum(loss_list) / len(loss_list),
+                "model time": f'{mt - st:.2f} s',
+                "optim time": f'{ot - mt:.2f} s'
             }
         )
         if writer:

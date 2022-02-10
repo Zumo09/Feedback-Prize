@@ -65,7 +65,7 @@ class HungarianMatcher(nn.Module):
         out_bbox = outputs["pred_boxes"].flatten(0, 1)  # [batch_size * num_queries, 2]
 
         # Also concat the target labels and boxes
-        tgt_ids = torch.cat([v["labels"] for v in targets])
+        tgt_ids = torch.cat([v["labels"].reshape(-1) for v in targets])
         tgt_bbox = torch.cat([v["boxes"] for v in targets])
 
 
@@ -91,15 +91,6 @@ class HungarianMatcher(nn.Module):
         final_cost_matrix = final_cost_matrix.view(bs, num_queries, -1).cpu()
 
         sizes = [len(v["boxes"]) for v in targets]
-        
-        #####################################################
-        print(final_cost_matrix.size())
-        print(sizes)
-        print(len(final_cost_matrix.split(sizes, -1)))
-        for i, c in enumerate(final_cost_matrix.split(sizes, -1)):
-            print(i, c.size())
-            print(linear_sum_assignment(c[i]))
-        #####################################################
         
         indices = [
             linear_sum_assignment(c[i])
