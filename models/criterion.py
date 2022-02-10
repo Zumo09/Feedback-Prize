@@ -73,7 +73,7 @@ class CriterionDETR(nn.Module):
         pred_logits = outputs["pred_logits"]
         device = pred_logits.device
         tgt_lengths = torch.as_tensor(
-            [len(v["labels"]) for v in targets], device=device
+            [len(v["labels"].reshape(-1)) for v in targets], device=device
         )
         # Count the number of predictions that are NOT "no-object" (which is the last class)
         card_pred = (pred_logits.argmax(-1) != pred_logits.shape[-1] - 1).sum(1)
@@ -144,7 +144,7 @@ class CriterionDETR(nn.Module):
 
         # Compute the average number of target boxes accross all nodes, for normalization purposes
         # No distributed -> maybe this parameter cn be simplified
-        num_boxes = sum(len(t["labels"]) for t in targets)
+        num_boxes = sum(len(t["labels"].reshape(-1)) for t in targets)
         # print(num_boxes)
         # num_boxes = torch.as_tensor(
         #     [num_boxes], dtype=torch.float, device=next(iter(outputs.values())).device
