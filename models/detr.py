@@ -18,8 +18,6 @@ class Transformer(nn.Module):
         tgt = torch.zeros_like(query_embed)
         tgt = tgt.unsqueeze(-1).permute(2, 0, 1)
         tgt = tgt + query_embed
-        print(tgt.size())
-        print(enc["last_hidden_state"].size())
         dec = self.decoder(
             inputs_embeds=tgt, encoder_hidden_states=enc["last_hidden_state"]
         )
