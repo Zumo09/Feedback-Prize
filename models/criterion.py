@@ -50,7 +50,7 @@ class CriterionDETR(nn.Module):
 
         idx = self._get_src_permutation_idx(indices)
         target_classes_o = torch.cat(
-            [t["labels"][j] for t, (_, j) in zip(targets, indices)]
+            [t["labels"].reshape(-1)[j] for t, (_, j) in zip(targets, indices)]
         )
         target_classes = torch.full(
             src_logits.shape[:2],
