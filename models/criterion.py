@@ -106,6 +106,34 @@ class CriterionDETR(nn.Module):
         )
         losses["loss_giou"] = loss_giou.sum() / num_boxes
         return losses
+    
+    def loss_overlapped_boxes(self, outputs, targets, indices, num_boxes):
+        """Compute the losses related to the overlapped bounding boxes
+        targets dicts must contain the key "boxes" containing a tensor of dim [nb_target_boxes, 2]
+        The target boxes are expected in format (center, length), normalized by the document len.
+        """
+        assert "pred_logits" in outputs
+        src_logits = outputs["pred_logits"]
+
+        assert "pred_boxes" in outputs
+        src_obj_boxes = outputs["pred_boxes"]
+
+        prob = F.softmax(src_logits, -1)
+        _, labels = prob.max(-1)
+
+        mask = labels != self.num_classes
+
+        print(labels.size())
+        print(mask.size())
+        
+        print(src_obj_boxes.size())
+        obj_boxes = src_obj_boxes * mask
+        print(obj_boxes.size())
+
+        loss_overlap = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)  # type: ignore
+        losses = {"loss_overlap": loss_overlap}
+
+        return losses
 
     def _get_src_permutation_idx(self, indices):
         # permute predictions following indices
@@ -128,6 +156,7 @@ class CriterionDETR(nn.Module):
             "labels": self.loss_labels,
             "cardinality": self.loss_cardinality,
             "boxes": self.loss_boxes,
+            "overlap": self.loss_overlapped_boxes,
         }
         assert loss in loss_map, f"do you really want to compute {loss} loss?"
         return loss_map[loss](outputs, targets, indices, num_boxes, **kwargs)

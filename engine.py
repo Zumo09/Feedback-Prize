@@ -90,7 +90,8 @@ def train_one_epoch(
                 **loss_dict_scaled,
                 **loss_dict_unscaled,
             }
-            writer.add_scalars("Training", scalars)
+            for key, value in scalars.items():
+                writer.add_scalars(key, {'Train': value})
 
 
 @torch.no_grad()
@@ -143,6 +144,7 @@ def evaluate(
     scalars = {"loss": loss, "accuracy": report["f1"]["macro_avg"]}
 
     if writer:
-        writer.add_scalars(tag, scalars)
+        for key, value in scalars.items():
+            writer.add_scalars(key, {tag: value})
 
     return report
