@@ -28,12 +28,13 @@ def build_models(num_classes: int, args):
     )
 
     weight_dict = {
-        "loss_ce": 1,
-        "loss_bbox": args.bbox_loss_coef,
-        "loss_giou": args.giou_loss_coef,
+    "loss_ce": 1,
+    "loss_bbox": args.bbox_loss_coef,
+    "loss_giou": args.giou_loss_coef,
+    "loss_overlap": args.overlap_loss_coef,
     }
 
-    losses = ["labels", "boxes", "cardinality"]
+    losses = ["labels", "boxes", "cardinality", "overlap"]
     criterion = CriterionDETR(
         num_classes=num_classes,
         matcher=matcher,

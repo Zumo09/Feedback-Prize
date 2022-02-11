@@ -106,31 +106,21 @@ class CriterionDETR(nn.Module):
         )
         losses["loss_giou"] = loss_giou.sum() / num_boxes
         return losses
-    
+
     def loss_overlapped_boxes(self, outputs, targets, indices, num_boxes):
         """Compute the losses related to the overlapped bounding boxes
         targets dicts must contain the key "boxes" containing a tensor of dim [nb_target_boxes, 2]
         The target boxes are expected in format (center, length), normalized by the document len.
         """
-        assert "pred_logits" in outputs
-        src_logits = outputs["pred_logits"]
+        idx = self._get_src_permutation_idx(indices)
 
         assert "pred_boxes" in outputs
-        src_obj_boxes = outputs["pred_boxes"]
+        src_boxes = outputs["pred_boxes"][idx]
 
-        prob = F.softmax(src_logits, -1)
-        _, labels = prob.max(-1)
-
-        mask = labels != self.num_classes
-
-        print(labels.size())
-        print(mask.size())
+        boxes = box_ops.box_cl_to_se(src_boxes)
+        giou = box_ops.generalized_box_iou(boxes, boxes)
         
-        print(src_obj_boxes.size())
-        obj_boxes = src_obj_boxes * mask
-        print(obj_boxes.size())
-
-        loss_overlap = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)  # type: ignore
+        loss_overlap = (giou * (1 - torch.eye(giou.size(0)))).sum()
         losses = {"loss_overlap": loss_overlap}
 
         return losses
