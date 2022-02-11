@@ -156,10 +156,17 @@ def main(args):
     np.random.seed(seed)
     random.seed(seed)
 
+    print('Loading Dataset...')
+
     dataset_train, dataset_val, postprocessor, num_classes = build_fdb_data(args)
+
+    print('Dataset loaded')
+    print('Loading Models...')
 
     tokenizer, model, criterion = build_models(num_classes, args)
     model.to(device)
+
+    print('Models Loaded')
 
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("number of params:", n_parameters)
@@ -261,7 +268,7 @@ def main(args):
                 )
         
         postprocessor.reset_results()
-        evaluate(
+        report = evaluate(
             tokenizer=tokenizer,
             model=model,
             criterion=criterion,
@@ -272,6 +279,9 @@ def main(args):
             tag="Validation",
             writer=writer,
         )
+
+        print(report.to_string())
+
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))

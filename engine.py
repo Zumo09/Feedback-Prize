@@ -34,19 +34,18 @@ def train_one_epoch(
     data_bar = tqdm(data_loader, desc=f"Train Epoch {epoch:4d}")
     for samples, targets, info in data_bar:
         st = time.time()
-        
+
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
         outputs = []
         for doc in samples:
             inputs = tokenizer([doc]).to(device)
             outputs.append(model(inputs))
-        
+
         batch_outputs = {
-            key: torch.cat([o[key] for o in outputs])
-            for key in outputs[0].keys()
+            key: torch.cat([o[key] for o in outputs]) for key in outputs[0].keys()
         }
-        
+
         loss_dict = criterion(batch_outputs, targets)  # type: Dict[str, torch.Tensor]
 
         mt = time.time()
@@ -79,9 +78,9 @@ def train_one_epoch(
         data_bar.set_postfix(
             {
                 "lr": optimizer.param_groups[0]["lr"],
-                "mean_loss": sum(loss_list) / len(loss_list),
-                "model time": f'{mt - st:.2f} s',
-                "optim time": f'{ot - mt:.2f} s'
+                "loss": sum(loss_list) / len(loss_list),
+                "model time": f"{mt - st:.2f} s",
+                "optim time": f"{ot - mt:.2f} s",
             }
         )
         if writer:
@@ -118,12 +117,11 @@ def evaluate(
         for doc in samples:
             inputs = tokenizer([doc]).to(device)
             outputs.append(model(inputs))
-        
+
         batch_outputs = {
-            key: torch.cat([o[key] for o in outputs])
-            for key in outputs[0].keys()
+            key: torch.cat([o[key] for o in outputs]) for key in outputs[0].keys()
         }
-        
+
         loss_dict = criterion(batch_outputs, targets)  # type: Dict[str, torch.Tensor]
         weight_dict = criterion.weight_dict
 
@@ -138,11 +136,13 @@ def evaluate(
         loss_value = losses.item()  # type: ignore
         loss_list.append(loss_value)
 
+        data_bar.set_postfix({"loss": sum(loss_list) / len(loss_list)})
+
     loss = sum(loss_list) / len(loss_list)
     report = postprocessor.evaluate()
-    scalars = {"loss": loss, "accuracy": report['f1']['macro_avg']}
-    data_bar.set_postfix(scalars)
+    scalars = {"loss": loss, "accuracy": report["f1"]["macro_avg"]}
+
     if writer:
         writer.add_scalars(tag, scalars)
-    
+
     return report
