@@ -2,3 +2,4 @@
 feedback-prize/vocabulary.pkl
 *.pyc
 feedback-prize/vocabulary.pkl
+outputs/*

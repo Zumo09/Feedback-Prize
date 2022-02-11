@@ -3,6 +3,7 @@ import argparse
 import datetime
 import os
 import random
+import sys
 import time
 from pathlib import Path
 
@@ -11,16 +12,16 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 
-import util.misc as utils
-from datasets import build_train_val_datasets_evaluator
+from datasets import build_fdb_data, collate_fn
 from engine import evaluate, train_one_epoch
 from models import build_models
 
 
 def get_args_parser():
-    parser = argparse.ArgumentParser("Set transformer detector", add_help=False)
+    parser = argparse.ArgumentParser("Set transformer detector")
+
     parser.add_argument("--lr", default=1e-4, type=float)
-    parser.add_argument("--lr_backbone", default=1e-5, type=float)
+    # parser.add_argument("--lr_backbone", default=1e-5, type=float)
     parser.add_argument("--batch_size", default=2, type=int)
     parser.add_argument("--weight_decay", default=1e-4, type=float)
     parser.add_argument("--epochs", default=300, type=int)
@@ -36,45 +37,6 @@ def get_args_parser():
         default=None,
         help="Path to the pretrained model. If set, only the mask head will be trained",
     )
-    # * Backbone
-    parser.add_argument(
-        "--backbone",
-        default="resnet50",
-        type=str,
-        help="Name of the convolutional backbone to use",
-    )
-    parser.add_argument(
-        "--dilation",
-        action="store_true",
-        help="If true, we replace stride with dilation in the last convolutional block (DC5)",
-    )
-    parser.add_argument(
-        "--position_embedding",
-        default="sine",
-        type=str,
-        choices=("sine", "learned"),
-        help="Type of positional embedding to use on top of the image features",
-    )
-
-    # * Transformer
-    parser.add_argument(
-        "--enc_layers",
-        default=6,
-        type=int,
-        help="Number of encoding layers in the transformer",
-    )
-    parser.add_argument(
-        "--dec_layers",
-        default=6,
-        type=int,
-        help="Number of decoding layers in the transformer",
-    )
-    parser.add_argument(
-        "--dim_feedforward",
-        default=2048,
-        type=int,
-        help="Intermediate size of the feedforward layers in the transformer blocks",
-    )
     parser.add_argument(
         "--hidden_dim",
         default=256,
@@ -82,27 +44,10 @@ def get_args_parser():
         help="Size of the embeddings (dimension of the transformer)",
     )
     parser.add_argument(
-        "--dropout", default=0.1, type=float, help="Dropout applied in the transformer"
-    )
-    parser.add_argument(
-        "--nheads",
-        default=8,
-        type=int,
-        help="Number of attention heads inside the transformer's attentions",
-    )
-    parser.add_argument(
         "--num_queries", default=100, type=int, help="Number of query slots"
     )
-    parser.add_argument("--pre_norm", action="store_true")
 
-    # Loss
-    parser.add_argument(
-        "--no_aux_loss",
-        dest="aux_loss",
-        action="store_false",
-        help="Disables auxiliary decoding losses (loss at each layer)",
-    )
-    # * Matcher
+    # Matcher
     parser.add_argument(
         "--set_cost_class",
         default=1,
@@ -121,6 +66,12 @@ def get_args_parser():
         type=float,
         help="giou box coefficient in the matching cost",
     )
+    parser.add_argument(
+        "--train_transformer",
+        default=False,
+        type=bool,
+        help="train the transformer module",
+    )
     # * Loss coefficients
     parser.add_argument("--bbox_loss_coef", default=5, type=float)
     parser.add_argument("--giou_loss_coef", default=2, type=float)
@@ -133,7 +84,31 @@ def get_args_parser():
 
     # dataset parameters
     parser.add_argument(
+        "--input_path",
+        default="./input/feedback-prize-2021/",
+        type=str,
+        help="Folder where the inputs are",
+    )
+    parser.add_argument(
+        "--test_size",
+        default=0.2,
+        type=float,
+        help="Size of the validation set in the range (0, 1)",
+    )
+    parser.add_argument(
         "--device", default="cuda", help="device to use for training / testing"
+    )
+    parser.add_argument(
+        "--preprocessing",
+        default=True,
+        type=bool,
+        help="apply preprocessing to the dataset",
+    )
+    parser.add_argument(
+        "--eval",
+        default=False,
+        type=bool,
+        help="only evaluate the validation set and exit",
     )
     parser.add_argument("--seed", default=42, type=int)
     parser.add_argument("--resume", default="", help="resume from checkpoint")
@@ -141,6 +116,12 @@ def get_args_parser():
         "--start_epoch", default=0, type=int, metavar="N", help="start epoch"
     )
     parser.add_argument("--num_workers", default=2, type=int)
+    parser.add_argument(
+        "--output_dir",
+        default="./outputs",
+        type=str,
+        help="Folder where the outputs will be saved",
+    )
 
     return parser
 
@@ -156,41 +137,31 @@ def main(args):
     np.random.seed(seed)
     random.seed(seed)
 
-    model, criterion, postprocessors = build_models(args)
+    print("Loading Dataset...")
+
+    dataset_train, dataset_val, postprocessor, num_classes = build_fdb_data(args)
+
+    print("Dataset loaded")
+    print("Loading Models...")
+
+    tokenizer, model, criterion = build_models(num_classes, args)
     model.to(device)
+
+    print("Models Loaded")
 
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("number of params:", n_parameters)
 
-    param_dicts = [
-        {
-            "params": [
-                p
-                for n, p in model.named_parameters()
-                if "backbone" not in n and p.requires_grad
-            ]
-        },
-        {
-            "params": [
-                p
-                for n, p in model.named_parameters()
-                if "backbone" in n and p.requires_grad
-            ],
-            "lr": args.lr_backbone,
-        },
-    ]
     optimizer = torch.optim.AdamW(
-        param_dicts, lr=args.lr, weight_decay=args.weight_decay
+        model.parameters(), lr=args.lr, weight_decay=args.weight_decay
     )
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_drop)
-
-    dataset_train, dataset_val, evaluator = build_train_val_datasets_evaluator(args)
 
     data_loader_train = DataLoader(
         dataset_train,
         shuffle=True,
         batch_size=args.batch_size,
-        collate_fn=utils.collate_fn,
+        collate_fn=collate_fn,
         num_workers=args.num_workers,
     )
     data_loader_val = DataLoader(
@@ -198,7 +169,7 @@ def main(args):
         shuffle=False,
         batch_size=args.batch_size,
         drop_last=False,
-        collate_fn=utils.collate_fn,
+        collate_fn=collate_fn,
         num_workers=args.num_workers,
     )
 
@@ -225,6 +196,21 @@ def main(args):
             lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
             args.start_epoch = checkpoint["epoch"] + 1
 
+    if args.eval:
+        postprocessor.reset_results()
+        report = evaluate(
+            tokenizer=tokenizer,
+            model=model,
+            criterion=criterion,
+            postprocessor=postprocessor,
+            data_loader=data_loader_val,
+            epoch=0,
+            device=device,
+        )
+
+        print(report.to_string())
+        sys.exit()
+
     print("Start training")
     writer = None
     if args.output_dir:
@@ -232,6 +218,7 @@ def main(args):
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
         train_one_epoch(
+            tokenizer=tokenizer,
             model=model,
             criterion=criterion,
             data_loader=data_loader_train,
@@ -259,17 +246,20 @@ def main(args):
                     checkpoint_path,
                 )
 
-        evaluate(
+        postprocessor.reset_results()
+        report = evaluate(
+            tokenizer=tokenizer,
             model=model,
             criterion=criterion,
-            postprocessor=postprocessors,
-            evaluator=evaluator,
+            postprocessor=postprocessor,
             data_loader=data_loader_val,
             epoch=epoch,
             device=device,
             tag="Validation",
             writer=writer,
         )
+
+        print(report.to_string())
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))

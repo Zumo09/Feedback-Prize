@@ -1,44 +1,82 @@
+from lib2to3.pgen2 import token
+import torch
 from torch import nn
-from transformers import LEDModel, LEDTokenizerFast
+import torch.nn.functional as F
+
+
+class Transformer(nn.Module):
+    def __init__(self, model):
+        super().__init__()
+
+        self.model = model
+
+        self.encoder = self.model.encoder
+        self.decoder = self.model.decoder
+
+    def forward(self, enc_input_ids, query_embed):
+
+        enc = self.encoder(enc_input_ids)
+        tgt = torch.zeros_like(query_embed)
+        tgt = tgt.unsqueeze(-1).permute(2, 0, 1)
+        tgt = tgt + query_embed
+        dec = self.decoder(
+            inputs_embeds=tgt, encoder_hidden_states=enc["last_hidden_state"]
+        )
+
+        return dec
 
 
 class DETR(nn.Module):
-
-    def __init__(self, hidden_dim, num_classes, num_queries):
-
+    def __init__(self, model, num_classes, num_queries, hidden_dim, encoder_hd=768):
         super().__init__()
 
-        self.tokenizer = LEDTokenizerFast.from_pretrained('allenai/led-base-16384')
+        self.transformer = Transformer(model)
+        # prediction heads, one extra class for predicting non-empty slots
+        # note that in baseline DETR linear_bbox layer is 3-layer MLP
+        self.linear_class = nn.Linear(encoder_hd, num_classes + 1)
+        self.linear_bbox = MLP(encoder_hd, hidden_dim, 2, 3)
+        self.query_embed = nn.Embedding(num_queries, encoder_hd)
+        # output positional encodings (object queries)
+        self.query_pos = nn.parameter.Parameter(torch.rand(100, encoder_hd))
 
-        led = LEDModel.from_pretrained('allenai/led-base-16384')
-        self.encoder = led.encoder
-        self.decoder = led.decoder
+    def forward(self, inputs_ids):
+        h = self.transformer(inputs_ids, self.query_embed.weight)["last_hidden_state"]
 
-        self.num_queries = num_queries
-        self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
-        self.bbox_embed = MLP(hidden_dim, hidden_dim, 2, 3)
-        self.query_embed = nn.Embedding(num_queries, hidden_dim)
-
-    def forward(self, text):
-        ids = self.tokenizer(text, return_tensor='pt').input_ids
-        hs = self.encoder(input_ids=ids)['last_hidden_state']
-        hs = self.decoder(input_embeds=self.query_embeds.weigth, encoder_hidden_state=hs)['last_hidden_state']
-        outputs_class = self.class_embed(hs)
-        outputs_coord = self.bbox_embed(hs).sigmoid()
-        out = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
-        # if self.aux_loss:
-        #     out['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord) # will we use auxiliary losses??
-        return out
+        # finally project transformer outputs to class labels and bounding boxes
+        return {
+            "pred_logits": self.linear_class(h),
+            "pred_boxes": self.linear_bbox(h).sigmoid(),
+        }
+    
+    def set_transformer_trainable(self, trainable: bool):
+        for param in self.transformer.parameters():
+            param.requires_grad = trainable
 
 
 class MLP(nn.Module):
-
     def __init__(self, input_dim, hidden_dim, output_dim, num_layers):
         super().__init__()
         self.num_layers = num_layers
         h = [hidden_dim] * (num_layers - 1)
-        self.layers = nn.ModuleList(nn.Linear(n, k) for n, k in zip([input_dim] + h, h + [output_dim]))
+        self.layers = nn.ModuleList(
+            nn.Linear(n, k) for n, k in zip([input_dim] + h, h + [output_dim])
+        )
 
     def forward(self, x):
         for i, layer in enumerate(self.layers):
-            x = nn.ReLU(layer(x)) if i < self.num_layers - 1 else layer(x)
+            x = F.relu(layer(x)) if i < self.num_layers - 1 else layer(x)
+        return x
+
+
+class PrepareInputs:
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+
+    def __call__(self, docs):
+        tokens = [
+            self.tokenizer(text, return_tensors="pt").input_ids.squeeze()
+            for text in docs
+        ]
+        return torch.nn.utils.rnn.pad_sequence(
+            tokens, batch_first=True, padding_value=0.0
+        )
