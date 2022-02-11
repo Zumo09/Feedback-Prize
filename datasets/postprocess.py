@@ -104,7 +104,7 @@ class FBPPostProcess:
                           For evaluation, this must be the original image size (before any data augmentation)
                           For visualization, this should be the image size after data augment, but before padding
         """
-        out_logits, out_bbox = outputs["pred_logits"], outputs["pred_boxes"]
+        out_logits, out_bbox = outputs["pred_logits"].cpu(), outputs["pred_boxes"].cpu()
         target_sizes = torch.Tensor([info["length"] for info in infos])
 
         assert len(out_logits) == len(target_sizes)
