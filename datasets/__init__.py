@@ -17,7 +17,7 @@ def build_fdb_data(args):
     encoder.fit(label_unique.reshape(-1, 1))
 
     train_idx, val_idx = train_test_split(
-        documents.index, test_size=args.test_size, random_state=args.random_state
+        documents.index, test_size=args.test_size, random_state=args.seed
     )
 
     train_dataset = FBPDataset(documents[train_idx], tags, encoder)  # type:ignore

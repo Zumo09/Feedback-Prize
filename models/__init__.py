@@ -15,6 +15,8 @@ def build_models(num_classes: int, args):
         num_queries=args.num_queries,
     )
 
+    model.set_transformer_trainable(args.train_transformer)
+
     tokenizer = PrepareInputs(
         tokenizer=LEDTokenizerFast.from_pretrained("allenai/led-base-16384")
     )
