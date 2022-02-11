@@ -14,7 +14,12 @@ class Transformer(nn.Module):
         self.decoder = self.model.decoder
 
     def forward(self, enc_input_ids, query_embed, glob_enc_attn, glob_dec_attn):
-
+        #Non mi è chiaro come dobbiamo assegnare le mask.
+        #per la maschera dell'encoder consigliano di metter la global attention solo sul token
+        #che definisce l'inizio <s>, mentre per il decoder non capisco.
+        #Ditemi voi se capite meglio.
+        #glob_enc_mask = torch.zeros(tokens.size()[1])
+        #glob_enc_mask[0] = 1
         enc = self.encoder(enc_input_ids, global_attention_mask=glob_enc_attn)
         tgt = torch.zeros_like(query_embed)
         tgt = tgt.unsqueeze(-1).permute(2, 0, 1)
