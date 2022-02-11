@@ -75,18 +75,3 @@ def generalized_box_iou(boxes1: torch.Tensor, boxes2: torch.Tensor) -> torch.Ten
     area = wh[:, :, 0]
 
     return iou - (area - union) / area
-
-
-if __name__ == '__main__':
-    boxes1 = torch.Tensor([
-        [0, 4], [5, 7], [20, 22]
-    ])
-    boxes2 = torch.Tensor([
-        [0, 4], [5, 10], [12, 19], [21, 23]
-    ])
-    gio = generalized_box_iou(boxes1, boxes2)
-
-    for i, b1 in enumerate(boxes1):
-        for j, b2 in enumerate(boxes2):
-            iou = gio[i, j]
-            print(b1, b2, iou)
