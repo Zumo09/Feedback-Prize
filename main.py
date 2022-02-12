@@ -1,7 +1,5 @@
-# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import argparse
 import datetime
-import os
 import random
 import sys
 import time
@@ -18,111 +16,46 @@ from models import build_models
 
 
 def get_args_parser():
-    parser = argparse.ArgumentParser("Set transformer detector")
+    parser = argparse.ArgumentParser("DETR for Argument Mining")
 
-    parser.add_argument("--lr", default=1e-4, type=float)
-    # parser.add_argument("--lr_backbone", default=1e-5, type=float)
-    parser.add_argument("--batch_size", default=2, type=int)
-    parser.add_argument("--weight_decay", default=1e-4, type=float)
-    parser.add_argument("--epochs", default=300, type=int)
-    parser.add_argument("--lr_drop", default=200, type=int)
-    parser.add_argument(
-        "--clip_max_norm", default=0.1, type=float, help="gradient clipping max norm"
-    )
+    # Optimization parameters
+    parser.add_argument("--lr", default=1e-4, type=float, help="Learning rate")
+    parser.add_argument("--batch_size", default=2, type=int, help="Batch Size")
+    parser.add_argument("--weight_decay", default=1e-4, type=float, help="Weight decay regularization factor")
+    parser.add_argument("--start_epoch", default=0, type=int, metavar="N", help="Start epoch")
+    parser.add_argument("--epochs", default=300, type=int, help="Number of trainig epochs")
+    parser.add_argument("--lr_drop", default=200, type=int, help="Learning rate drop")
+    parser.add_argument("--clip_max_norm", default=0.1, type=float, help="Gradient clipping max norm")
 
     # Model parameters
-    parser.add_argument(
-        "--frozen_weights",
-        type=str,
-        default=None,
-        help="Path to the pretrained model. If set, only the mask head will be trained",
-    )
-    parser.add_argument(
-        "--hidden_dim",
-        default=256,
-        type=int,
-        help="Size of the embeddings (dimension of the transformer)",
-    )
-    parser.add_argument(
-        "--num_queries", default=100, type=int, help="Number of query slots"
-    )
+    parser.add_argument("--hidden_dim", default=256, type=int, help="Size of the embeddings (dimension of the transformer)")
+    parser.add_argument("--num_queries", default=50, type=int, help="Number of query slots")
+    parser.add_argument("--train_transformer", default=False, type=bool, help="train the transformer module")
+    parser.add_argument("--frozen_weights", type=str, default=None, help="Path to the pretrained model")
+    parser.add_argument("--resume", type=str, default=None, help="resume from checkpoint")
 
-    # Matcher
-    parser.add_argument(
-        "--set_cost_class",
-        default=1,
-        type=float,
-        help="Class coefficient in the matching cost",
-    )
-    parser.add_argument(
-        "--set_cost_bbox",
-        default=5,
-        type=float,
-        help="L1 box coefficient in the matching cost",
-    )
-    parser.add_argument(
-        "--set_cost_giou",
-        default=2,
-        type=float,
-        help="giou box coefficient in the matching cost",
-    )
-    parser.add_argument(
-        "--train_transformer",
-        default=False,
-        type=bool,
-        help="train the transformer module",
-    )
-    # * Loss coefficients
-    parser.add_argument("--bbox_loss_coef", default=5, type=float)
-    parser.add_argument("--giou_loss_coef", default=2, type=float)
-    parser.add_argument("--overlap_loss_coef", default=2, type=float)
-    parser.add_argument(
-        "--eos_coef",
-        default=0.1,
-        type=float,
-        help="Relative classification weight of the no-object class",
-    )
+    # Matcher coefficient
+    parser.add_argument("--set_cost_class", default=1, type=float, help="Class coefficient in the matching cost")
+    parser.add_argument("--set_cost_bbox", default=5, type=float, help="L1 box coefficient in the matching cost")
+    parser.add_argument("--set_cost_giou", default=2, type=float, help="giou box coefficient in the matching cost")
 
-    # dataset parameters
-    parser.add_argument(
-        "--input_path",
-        default="./input/feedback-prize-2021/",
-        type=str,
-        help="Folder where the inputs are",
-    )
-    parser.add_argument(
-        "--test_size",
-        default=0.2,
-        type=float,
-        help="Size of the validation set in the range (0, 1)",
-    )
-    parser.add_argument(
-        "--device", default="cuda", help="device to use for training / testing"
-    )
-    parser.add_argument(
-        "--preprocessing",
-        default=True,
-        type=bool,
-        help="apply preprocessing to the dataset",
-    )
-    parser.add_argument(
-        "--eval",
-        default=False,
-        type=bool,
-        help="only evaluate the validation set and exit",
-    )
-    parser.add_argument("--seed", default=42, type=int)
-    parser.add_argument("--resume", default="", help="resume from checkpoint")
-    parser.add_argument(
-        "--start_epoch", default=0, type=int, metavar="N", help="start epoch"
-    )
-    parser.add_argument("--num_workers", default=2, type=int)
-    parser.add_argument(
-        "--output_dir",
-        default="./outputs",
-        type=str,
-        help="Folder where the outputs will be saved",
-    )
+    # Loss coefficients
+    parser.add_argument("--bbox_loss_coef", default=5, type=float, help="L1 box coefficient in the loss")
+    parser.add_argument("--giou_loss_coef", default=2, type=float, help="giou box coefficient in the loss")
+    parser.add_argument("--overlap_loss_coef", default=2, type=float, help="Overlap box coefficient in the loss")
+    parser.add_argument("--eos_coef", default=0.1, type=float, help="Relative classification weight of the no-object class")
+
+    # Dataset parameters
+    parser.add_argument("--input_path", default="./input/feedback-prize-2021/", type=str, help="Folder where the inputs are")
+    parser.add_argument("--test_size", default=0.2, type=float, help="Size of the validation set in the range (0, 1)")
+    parser.add_argument("--preprocessing", default=True, type=bool, help="Apply preprocessing to the dataset")
+    parser.add_argument("--num_workers", default=2, type=int, help="Workers used by the DataLoader")
+
+    # Other parameters
+    parser.add_argument("--output_dir", default="./outputs", type=str, help="Folder where the outputs will be saved")
+    parser.add_argument("--device", default="cuda", help="device to use for training / testing")
+    parser.add_argument("--seed", default=42, type=int, help="seed for reproducibility")
+    parser.add_argument("--eval", default=False, type=bool, help="only evaluate the validation set and exit")
 
     return parser
 
@@ -176,9 +109,8 @@ def main(args):
 
     if args.frozen_weights is not None:
         checkpoint = torch.load(args.frozen_weights, map_location="cpu")
-        model.detr.load_state_dict(checkpoint["model"])  # type: ignore
+        model.load_state_dict(checkpoint["model"])
 
-    output_dir = Path(args.output_dir)
     if args.resume:
         if args.resume.startswith("https"):
             checkpoint = torch.hub.load_state_dict_from_url(
@@ -214,8 +146,12 @@ def main(args):
 
     print("Start training")
     writer = None
+    output_dir = Path(".")
     if args.output_dir:
+        timestamp = datetime.datetime.now().strftime("%Y_%m_%d-%I_%M")
+        output_dir = Path(args.output_dir).joinpath(timestamp)
         writer = SummaryWriter(output_dir.joinpath("logs"))
+        print("Saving outputs at:", output_dir)
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
         train_one_epoch(
@@ -269,7 +205,9 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        "DETR training and evaluation script", parents=[get_args_parser()]
+        "DETR training and evaluation script",
+        parents=[get_args_parser()],
+        add_help=False,
     )
     args = parser.parse_args()
     if args.output_dir:
