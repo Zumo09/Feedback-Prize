@@ -61,7 +61,9 @@ def get_args_parser():
 
 
 def main(args):
-    print(args)
+    print("ARGUMENTS".rjust(20), "-", "VALUES")
+    for key, value in vars(args).items():
+        print(key.rjust(20), ":", value)
 
     device = torch.device(args.device)
 
@@ -71,17 +73,20 @@ def main(args):
     np.random.seed(seed)
     random.seed(seed)
 
+    print()
     print("Loading Dataset...")
 
     dataset_train, dataset_val, postprocessor, num_classes = build_fdb_data(args)
 
     print("Dataset loaded")
+    print()
     print("Loading Models...")
 
     tokenizer, model, criterion = build_models(num_classes, args)
     model.to(device)
 
     print("Models Loaded")
+    print()
 
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("number of params:", n_parameters)

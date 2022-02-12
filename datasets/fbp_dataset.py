@@ -41,23 +41,28 @@ class FBPDataset(Dataset):
 
         document = self.documents[doc_name]
         len_sequence = len(document.split())  # type: ignore
-        tag_boxes = self.map_pred(doc_tags["predictionstring"], len_sequence)
+        # tag_boxes = self.map_pred(doc_tags["predictionstring"], len_sequence)
+
+        center = pd.Series([0.5 for _ in range(len(doc_tags))]) # doc_tags["box_center"]
+        length = pd.Series([0.1 for _ in range(len(doc_tags))]) # doc_tags["box_length"]
+
+        tag_boxes = torch.Tensor([center, length]).T
 
         target = {"labels": tag_cats, "boxes": tag_boxes}
         info = {"id": doc_name, "length": len_sequence}
 
         return document, target, info # type: ignore
 
-    @staticmethod
-    def map_pred(pred, len_sequence):
-        tag_boxes = []
-        for p in pred:
-            p = p.split()
-            p = [int(n) for n in p]
-            p = torch.Tensor(p)
-            tag_boxes.append([torch.mean(p) / len_sequence, p.size()[0] / len_sequence])
+    # @staticmethod
+    # def map_pred(pred, len_sequence):
+    #     tag_boxes = []
+    #     for p in pred:
+    #         p = p.split()
+    #         p = [int(n) for n in p]
+    #         p = torch.Tensor(p)
+    #         tag_boxes.append([torch.mean(p) / len_sequence, p.size()[0] / len_sequence])
 
-        return torch.Tensor(tag_boxes)
+    #     return torch.Tensor(tag_boxes)
 
 
 def load_texts(
@@ -77,3 +82,10 @@ def load_texts(
 
     return pd.Series(documents), tags  # type: ignore
     
+if __name__ == '__main__':
+    doc, tag = load_texts('./input/feedback-prize-2021/', [])
+    encoder = OrdinalEncoder().fit(tag['discourse_type'].unique().reshape(-1, 1))
+    dataset = FBPDataset(doc, tag, encoder)
+
+    _, targ, _ = dataset[0]
+    print(targ['boxes'].size())

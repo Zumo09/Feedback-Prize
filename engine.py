@@ -12,13 +12,13 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 
-from models import CriterionDETR, PrepareInputs
+from models import CriterionDETR, PrepareInputs, DETR
 from datasets import FBPPostProcess
 
 
 def train_one_epoch(
     tokenizer: PrepareInputs,
-    model: torch.nn.Module,
+    model: DETR,
     criterion: CriterionDETR,
     data_loader: Iterable,
     optimizer: torch.optim.Optimizer,
@@ -40,7 +40,13 @@ def train_one_epoch(
         outputs = []
         for doc in samples:
             inputs = tokenizer([doc]).to(device)
-            outputs.append(model(inputs))
+
+            glob_enc_attn = torch.zeros(inputs.size()[1])
+            glob_enc_attn[0] = 1
+
+            glob_dec_attn = torch.ones(model.num_queries)
+
+            outputs.append(model(inputs, glob_enc_attn, glob_dec_attn))
 
         batch_outputs = {
             key: torch.cat([o[key] for o in outputs]) for key in outputs[0].keys()
@@ -97,7 +103,7 @@ def train_one_epoch(
 @torch.no_grad()
 def evaluate(
     tokenizer: PrepareInputs,
-    model: torch.nn.Module,
+    model: DETR,
     criterion: CriterionDETR,
     postprocessor: FBPPostProcess,
     data_loader: DataLoader,
@@ -117,7 +123,13 @@ def evaluate(
         outputs = []
         for doc in samples:
             inputs = tokenizer([doc]).to(device)
-            outputs.append(model(inputs))
+
+            glob_enc_attn = torch.zeros(inputs.size()[1])
+            glob_enc_attn[0] = 1
+
+            glob_dec_attn = torch.ones(model.num_queries)
+
+            outputs.append(model(inputs, glob_enc_attn, glob_dec_attn))
 
         batch_outputs = {
             key: torch.cat([o[key] for o in outputs]) for key in outputs[0].keys()
