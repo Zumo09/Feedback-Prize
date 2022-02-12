@@ -41,28 +41,13 @@ class FBPDataset(Dataset):
 
         document = self.documents[doc_name]
         len_sequence = len(document.split())  # type: ignore
-        # tag_boxes = self.map_pred(doc_tags["predictionstring"], len_sequence)
 
-        center = pd.Series([0.5 for _ in range(len(doc_tags))]) # doc_tags["box_center"]
-        length = pd.Series([0.1 for _ in range(len(doc_tags))]) # doc_tags["box_length"]
-
-        tag_boxes = torch.Tensor([center, length]).T
+        tag_boxes = torch.Tensor([doc_tags["box_center"], doc_tags["box_length"]]).T
 
         target = {"labels": tag_cats, "boxes": tag_boxes}
         info = {"id": doc_name, "length": len_sequence}
 
         return document, target, info # type: ignore
-
-    # @staticmethod
-    # def map_pred(pred, len_sequence):
-    #     tag_boxes = []
-    #     for p in pred:
-    #         p = p.split()
-    #         p = [int(n) for n in p]
-    #         p = torch.Tensor(p)
-    #         tag_boxes.append([torch.mean(p) / len_sequence, p.size()[0] / len_sequence])
-
-    #     return torch.Tensor(tag_boxes)
 
 
 def load_texts(
