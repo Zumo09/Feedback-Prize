@@ -119,8 +119,9 @@ class CriterionDETR(nn.Module):
 
         boxes = box_ops.box_cl_to_se(src_boxes)
         giou, _ = box_ops.box_iou(boxes, boxes)
-        
-        loss_overlap = (giou * (1 - torch.eye(giou.size(0)))).sum()
+
+        giou_no_diag = giou * (1 - torch.eye(giou.size(0)))
+        loss_overlap = giou_no_diag.sum() / num_boxes
         losses = {"loss_overlap": loss_overlap}
 
         return losses
@@ -161,16 +162,7 @@ class CriterionDETR(nn.Module):
         # Retrieve the matching between the outputs of the last layer and the targets
         indices = self.matcher(outputs, targets)
 
-        # Compute the average number of target boxes accross all nodes, for normalization purposes
-        # No distributed -> maybe this parameter cn be simplified
         num_boxes = sum(len(t["labels"].reshape(-1)) for t in targets)
-        # print(num_boxes)
-        # num_boxes = torch.as_tensor(
-        #     [num_boxes], dtype=torch.float, device=next(iter(outputs.values())).device
-        # )
-        # print(num_boxes)
-        # num_boxes = torch.clamp(num_boxes, min=1).item()
-        # print(num_boxes)
 
         # Compute all the requested losses
         losses = {}
