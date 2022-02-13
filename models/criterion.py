@@ -120,7 +120,7 @@ class CriterionDETR(nn.Module):
         boxes = box_ops.box_cl_to_se(src_boxes)
         giou, _ = box_ops.box_iou(boxes, boxes)
 
-        giou_no_diag = giou * (1 - torch.eye(giou.size(0)))
+        giou_no_diag = giou * (1 - torch.eye(giou.size(0), device=giou.device))
         loss_overlap = giou_no_diag.sum() / num_boxes
         losses = {"loss_overlap": loss_overlap}
 
