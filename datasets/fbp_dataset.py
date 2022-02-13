@@ -47,7 +47,7 @@ class FBPDataset(Dataset):
         target = {"labels": tag_cats, "boxes": tag_boxes}
         info = {"id": doc_name, "length": len_sequence}
 
-        return document, target, info # type: ignore
+        return document, target, info  # type: ignore
 
 
 def load_texts(
@@ -66,11 +66,12 @@ def load_texts(
     tags = pd.read_csv(os.path.join(path, "train.csv"), dtype=types)
 
     return pd.Series(documents), tags  # type: ignore
-    
-if __name__ == '__main__':
-    doc, tag = load_texts('./input/feedback-prize-2021/', [])
-    encoder = OrdinalEncoder().fit(tag['discourse_type'].unique().reshape(-1, 1))
+
+
+if __name__ == "__main__":
+    doc, tag = load_texts("./input/feedback-prize-2021/", [])
+    encoder = OrdinalEncoder().fit(tag["discourse_type"].unique().reshape(-1, 1))
     dataset = FBPDataset(doc, tag, encoder)
 
     _, targ, _ = dataset[0]
-    print(targ['boxes'].size())
+    print(targ["boxes"].size())
