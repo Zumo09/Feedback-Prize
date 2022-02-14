@@ -8,11 +8,10 @@ from pathlib import Path
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard.writer import SummaryWriter
 
 from datasets import build_fdb_data, collate_fn
-from engine import evaluate, train_one_epoch
 from models import build_models
+from engine import Engine
 
 
 def get_args_parser():
@@ -136,9 +135,11 @@ def main(args):
             lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
             args.start_epoch = checkpoint["epoch"] + 1
 
+    engine = Engine()
+
     if args.eval:
         postprocessor.reset_results()
-        report = evaluate(
+        report = engine.evaluate(
             tokenizer=tokenizer,
             model=model,
             criterion=criterion,
@@ -152,16 +153,11 @@ def main(args):
         sys.exit()
 
     print("Start training")
-    writer = None
-    output_dir = Path(".")
-    if args.output_dir:
-        timestamp = datetime.datetime.now().strftime("%Y_%m_%d-%I_%M")
-        output_dir = Path(args.output_dir).joinpath(timestamp)
-        writer = SummaryWriter(output_dir.joinpath("logs"))
-        print("Saving outputs at:", output_dir)
+
+    output_dir = engine.set_outputs(args.output_dir)
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
-        train_one_epoch(
+        engine.train_one_epoch(
             tokenizer=tokenizer,
             model=model,
             criterion=criterion,
@@ -170,7 +166,6 @@ def main(args):
             device=device,
             epoch=epoch,
             max_norm=args.clip_max_norm,
-            writer=writer,
         )
         lr_scheduler.step()
         if args.output_dir:
@@ -191,7 +186,7 @@ def main(args):
                 )
 
         postprocessor.reset_results()
-        report = evaluate(
+        report = engine.evaluate(
             tokenizer=tokenizer,
             model=model,
             criterion=criterion,
@@ -199,8 +194,6 @@ def main(args):
             data_loader=data_loader_val,
             epoch=epoch,
             device=device,
-            tag="Validation",
-            writer=writer,
         )
 
         print(report.to_string())
