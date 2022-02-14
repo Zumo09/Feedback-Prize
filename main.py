@@ -29,7 +29,7 @@ def get_args_parser():
     # Model parameters
     parser.add_argument("--hidden_dim", default=256, type=int, help="Size of the embeddings (dimension of the transformer)")
     parser.add_argument("--num_queries", default=50, type=int, help="Number of query slots")
-    parser.add_argument("--train_transformer", default=False, action='store_true', type=bool, help="train the transformer module")
+    parser.add_argument("--train_transformer", default=False, action='store_true', help="train the transformer module")
     parser.add_argument("--frozen_weights", type=str, default=None, help="Path to the pretrained model")
     parser.add_argument("--resume", type=str, default=None, help="resume from checkpoint")
 
@@ -47,16 +47,16 @@ def get_args_parser():
     # Dataset parameters
     parser.add_argument("--input_path", default="./input/feedback-prize-2021/", type=str, help="Folder where the inputs are")
     parser.add_argument("--test_size", default=0.2, type=float, help="Size of the validation set in the range (0, 1)")
-    parser.add_argument("--no_preprocessing", default=False, action='store_true', type=bool, help="Don't apply preprocessing to the dataset")
+    parser.add_argument("--no_preprocessing", default=False, action='store_true', help="Don't apply preprocessing to the dataset")
     parser.add_argument("--num_workers", default=2, type=int, help="Workers used by the DataLoader")
 
     # Other parameters
     parser.add_argument("--output_dir", default="./outputs", type=str, help="Folder where the outputs will be saved")
     parser.add_argument("--device", default="cuda", help="device to use for training / testing")
     parser.add_argument("--seed", default=42, type=int, help="seed for reproducibility")
-    parser.add_argument("--eval", default=False, action='store_true', type=bool, help="only evaluate the validation set and exit")
+    parser.add_argument("--eval", default=False, action='store_true', help="only evaluate the validation set and exit")
     parser.add_argument("--dataset_size", default=1.0, type=float, help="[0, 1], 1 for full dataset")
-    parser.add_argument("--align_target", default=False, action='store_true', type=bool, help="Use aligned target")
+    parser.add_argument("--align_target", default=False, action='store_true', help="Use aligned target")
 
     return parser
 
