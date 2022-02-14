@@ -20,8 +20,8 @@ def build_fdb_data(args):
         documents.index, test_size=args.test_size, random_state=args.seed
     )
 
-    train_dataset = FBPDataset(documents[train_idx], tags, encoder)  # type:ignore
-    val_dataset = FBPDataset(documents[val_idx], tags, encoder)  # type:ignore
+    train_dataset = FBPDataset(documents[train_idx], tags, encoder, args.align_target)  # type:ignore
+    val_dataset = FBPDataset(documents[val_idx], tags, encoder, args.align_target)  # type:ignore
 
     num_classes = len(label_unique)
     postprocessor = FBPPostProcess(encoder, tags, num_classes)

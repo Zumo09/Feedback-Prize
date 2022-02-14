@@ -1,10 +1,10 @@
+from collections import deque
 from datetime import datetime
 import math
 from pathlib import Path
 import sys
-import time
 from tqdm import tqdm
-from typing import Iterable, Dict, Optional
+from typing import Optional
 
 import torch
 from torch.utils.data import DataLoader
@@ -18,6 +18,7 @@ class Engine:
     def __init__(self) -> None:
         self.global_step = 0
         self.writer: Optional[SummaryWriter] = None
+        self.loss_window = deque(maxlen=100)
 
     @staticmethod
     def get_outputs(tokenizer, model, samples, device):
@@ -43,7 +44,7 @@ class Engine:
         tokenizer: PrepareInputs,
         model: DETR,
         criterion: CriterionDETR,
-        data_loader: Iterable,
+        data_loader: DataLoader,
         optimizer: torch.optim.Optimizer,
         device: torch.device,
         epoch: int,
@@ -52,20 +53,13 @@ class Engine:
         model.train()
         criterion.train()
 
-        loss_list = []
         data_bar = tqdm(data_loader, desc=f"Train Epoch {epoch:4d}")
         for samples, targets, info in data_bar:
-            st = time.time()
-
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
             batch_outputs = self.get_outputs(tokenizer, model, samples, device)
 
-            loss_dict = criterion(
-                batch_outputs, targets
-            )  # type: Dict[str, torch.Tensor]
-
-            mt = time.time()
+            loss_dict = criterion(batch_outputs, targets)
 
             weight_dict = criterion.weight_dict
             losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)  # type: ignore
@@ -89,15 +83,12 @@ class Engine:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)  # type: ignore
             optimizer.step()
 
-            ot = time.time()
-
-            loss_list.append(losses.item())  # type: ignore
+            self.loss_window.append(losses.item())  # type: ignore
             data_bar.set_postfix(
                 {
+                    "loss": sum(self.loss_window) / len(self.loss_window),
                     "lr": optimizer.param_groups[0]["lr"],
-                    "loss": sum(loss_list) / len(loss_list),
-                    "model time": f"{mt - st:.2f} s",
-                    "optim time": f"{ot - mt:.2f} s",
+                    **loss_dict_scaled,
                 }
             )
             self.global_step += 1
@@ -132,9 +123,7 @@ class Engine:
 
             batch_outputs = self.get_outputs(tokenizer, model, samples, device)
 
-            loss_dict = criterion(
-                batch_outputs, targets
-            )  # type: Dict[str, torch.Tensor]
+            loss_dict = criterion(batch_outputs, targets)
             weight_dict = criterion.weight_dict
 
             losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)  # type: ignore

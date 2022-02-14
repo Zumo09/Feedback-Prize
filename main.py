@@ -56,6 +56,7 @@ def get_args_parser():
     parser.add_argument("--seed", default=42, type=int, help="seed for reproducibility")
     parser.add_argument("--eval", default=False, type=bool, help="only evaluate the validation set and exit")
     parser.add_argument("--dataset_size", default=1.0, type=float, help="[0, 1], 1 for full dataset")
+    parser.add_argument("--align_target", default=True, type=bool, help="Use aligned target")
 
     return parser
 

@@ -8,7 +8,6 @@ import pandas as pd
 from sklearn.preprocessing import OrdinalEncoder
 
 import torch
-import torch.nn.functional as F
 from torch.utils.data import Dataset
 
 
@@ -18,10 +17,13 @@ class FBPDataset(Dataset):
         documents: pd.Series,
         tags: pd.DataFrame,
         encoder: OrdinalEncoder,
+        align_target: bool,
     ):
         self.documents = documents
         self.tags = tags
         self.encoder = encoder
+        self.align_target = align_target
+
 
     def __len__(self):
         return len(self.documents)
@@ -40,13 +42,26 @@ class FBPDataset(Dataset):
         )
 
         document = self.documents[doc_name]
-        boxes = torch.Tensor(doc_tags[["box_center", "box_length"]].values)
         len_sequence = len(document.split())  # type: ignore
+
+        if self.align_target:
+            boxes = torch.Tensor(doc_tags[["box_center", "box_length"]].values)
+        else:
+            boxes = self.map_pred(doc_tags['predictionstring'], len_sequence)
 
         target = {"labels": tag_cats, "boxes": boxes}
         info = {"id": doc_name, "length": len_sequence}
 
         return document, target, info  # type: ignore
+    
+    @staticmethod
+    def map_pred(pred, len_sequence):
+        tag_boxes = []
+        for p in pred:
+            p = p.split()
+            p = [int(n) for n in p]
+            p = torch.Tensor(p)
+            tag_boxes.append([torch.mean(p) / len_sequence, p.size()[0] / len_sequence])
 
 
 def load_texts(
@@ -58,7 +73,7 @@ def load_texts(
     if dataset_size < 1.0:
         size = int(len(listdir) * dataset_size)
         listdir = listdir[:size]
-        
+
     for f_name in tqdm(listdir):
         doc_name = f_name.replace(".txt", "")
         # with open(f_name, 'r') as f:
