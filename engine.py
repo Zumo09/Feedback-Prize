@@ -47,7 +47,7 @@ class Engine:
         optimizer: torch.optim.Optimizer,
         device: torch.device,
         epoch: int,
-        max_norm: float = 0
+        max_norm: float = 0,
     ):
         model.train()
         criterion.train()
@@ -61,7 +61,9 @@ class Engine:
 
             batch_outputs = self.get_outputs(tokenizer, model, samples, device)
 
-            loss_dict = criterion(batch_outputs, targets)  # type: Dict[str, torch.Tensor]
+            loss_dict = criterion(
+                batch_outputs, targets
+            )  # type: Dict[str, torch.Tensor]
 
             mt = time.time()
 
@@ -107,8 +109,7 @@ class Engine:
                     **loss_dict_unscaled,
                 }
                 for key, value in scalars.items():
-                    self.writer.add_scalars(key, {'Train': value}, self.global_step)
-
+                    self.writer.add_scalars(key, {"Train": value}, self.global_step)
 
     @torch.no_grad()
     def evaluate(
@@ -119,7 +120,7 @@ class Engine:
         postprocessor: FBPPostProcess,
         data_loader: DataLoader,
         epoch: int,
-        device: torch.device
+        device: torch.device,
     ):
         model.eval()
         criterion.eval()
@@ -131,7 +132,9 @@ class Engine:
 
             batch_outputs = self.get_outputs(tokenizer, model, samples, device)
 
-            loss_dict = criterion(batch_outputs, targets)  # type: Dict[str, torch.Tensor]
+            loss_dict = criterion(
+                batch_outputs, targets
+            )  # type: Dict[str, torch.Tensor]
             weight_dict = criterion.weight_dict
 
             losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)  # type: ignore
