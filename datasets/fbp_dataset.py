@@ -62,6 +62,8 @@ class FBPDataset(Dataset):
             p = [int(n) for n in p]
             p = torch.Tensor(p)
             tag_boxes.append([torch.mean(p) / len_sequence, p.size()[0] / len_sequence])
+        
+        return torch.Tensor(tag_boxes)
 
 
 def load_texts(
