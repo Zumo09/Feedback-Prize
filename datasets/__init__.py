@@ -10,7 +10,7 @@ from .postprocess import FBPPostProcess
 
 def build_fdb_data(args):
     preprocess = PIPELINE if args.preprocessing else []
-    documents, tags = load_texts(args.input_path, preprocess)  # type: ignore
+    documents, tags = load_texts(args.input_path, preprocess, args.dataset_size)  # type: ignore
 
     encoder = OrdinalEncoder()
     label_unique = np.array(tags["discourse_type"].unique())  # type: ignore

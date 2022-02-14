@@ -56,14 +56,16 @@ def get_args_parser():
     parser.add_argument("--device", default="cuda", help="device to use for training / testing")
     parser.add_argument("--seed", default=42, type=int, help="seed for reproducibility")
     parser.add_argument("--eval", default=False, type=bool, help="only evaluate the validation set and exit")
+    parser.add_argument("--dataset_size", default=1.0, type=float, help="[0, 1], 1 for full dataset")
 
     return parser
 
 
 def main(args):
     print("ARGUMENTS".rjust(20), "-", "VALUES")
-    for key, value in vars(args).items():
-        print(key.rjust(20), ":", value)
+    vargs = vars(args)
+    for key in sorted(vargs.keys()):
+        print(key.rjust(20), ":", vargs[key])
 
     device = torch.device(args.device)
 

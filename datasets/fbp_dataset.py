@@ -50,11 +50,16 @@ class FBPDataset(Dataset):
 
 
 def load_texts(
-    path: str, preprocess: List[Callable[[str], str]]
+    path: str, preprocess: List[Callable[[str], str]], dataset_size: float
 ) -> Tuple[pd.Series, pd.DataFrame]:
     documents = {}
-    # for f_name in os.listdir(path):
-    for f_name in tqdm(os.listdir(path + "train/")):
+    listdir = os.listdir(path + "train/")
+
+    if dataset_size < 1.0:
+        size = int(len(listdir) * dataset_size)
+        listdir = listdir[:size]
+        
+    for f_name in tqdm(listdir):
         doc_name = f_name.replace(".txt", "")
         # with open(f_name, 'r') as f:
         with open(path + "train/" + f_name, "r") as f:
