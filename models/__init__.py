@@ -22,9 +22,9 @@ def build_models(num_classes: int, args):
     )
 
     matcher = HungarianMatcher(
-        cost_class=args.set_cost_class,
-        cost_bbox=args.set_cost_bbox,
-        cost_giou=args.set_cost_giou,
+        cost_class=1,
+        cost_bbox=args.bbox_loss_coef,
+        cost_giou=args.giou_loss_coef,
     )
 
     weight_dict = {

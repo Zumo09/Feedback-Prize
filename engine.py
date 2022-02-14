@@ -88,7 +88,7 @@ class Engine:
                 {
                     "loss": sum(self.loss_window) / len(self.loss_window),
                     "lr": optimizer.param_groups[0]["lr"],
-                    **loss_dict_scaled,
+                    **{k: v.item() for k, v in loss_dict_scaled.items()},
                 }
             )
             self.global_step += 1
