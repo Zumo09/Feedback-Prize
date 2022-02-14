@@ -9,7 +9,7 @@ from .postprocess import FBPPostProcess
 
 
 def build_fdb_data(args):
-    preprocess = PIPELINE if args.preprocessing else []
+    preprocess = [] if args.no_preprocessing else PIPELINE
     documents, tags = load_texts(args.input_path, preprocess, args.dataset_size)  # type: ignore
 
     encoder = OrdinalEncoder()
