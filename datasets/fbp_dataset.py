@@ -24,7 +24,6 @@ class FBPDataset(Dataset):
         self.encoder = encoder
         self.align_target = align_target
 
-
     def __len__(self):
         return len(self.documents)
 
@@ -47,13 +46,13 @@ class FBPDataset(Dataset):
         if self.align_target:
             boxes = torch.Tensor(doc_tags[["box_center", "box_length"]].values)
         else:
-            boxes = self.map_pred(doc_tags['predictionstring'], len_sequence)
+            boxes = self.map_pred(doc_tags["predictionstring"], len_sequence)
 
         target = {"labels": tag_cats, "boxes": boxes}
         info = {"id": doc_name, "length": len_sequence}
 
         return document, target, info  # type: ignore
-    
+
     @staticmethod
     def map_pred(pred, len_sequence):
         tag_boxes = []
@@ -62,8 +61,40 @@ class FBPDataset(Dataset):
             p = [int(n) for n in p]
             p = torch.Tensor(p)
             tag_boxes.append([torch.mean(p) / len_sequence, p.size()[0] / len_sequence])
-        
+
         return torch.Tensor(tag_boxes)
+
+
+class FBPTestDataset(Dataset):
+    def __init__(
+        self,
+        documents: pd.Series,
+        encoder: OrdinalEncoder,
+    ):
+        self.documents = documents
+        self.encoder = encoder
+
+    def __len__(self):
+        return len(self.documents)
+
+    def __getitem__(self, index) -> Tuple[str, Dict, Dict]:
+        doc_name = self.documents.index[index]
+        document = self.documents[doc_name]
+        len_sequence = len(document.split())  # type: ignore
+        info = {"id": doc_name, "length": len_sequence}
+        return document, info  # type: ignore
+
+
+def load_test_texts(path: str, preprocess: List[Callable[[str], str]]) -> pd.Series:
+    documents = {}
+    for f_name in tqdm(os.listdir(path + "test/")):
+        doc_name = f_name.replace(".txt", "")
+        # with open(f_name, 'r') as f:
+        with open(path + "train/" + f_name, "r") as f:
+            text = reduce(lambda txt, f: f(txt), preprocess, f.read())
+            documents[doc_name] = text
+
+    return pd.Series(documents)  # type: ignore
 
 
 def load_texts(
