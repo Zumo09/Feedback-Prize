@@ -22,8 +22,7 @@ class CriterionDETR(nn.Module):
         weight_dict: Dict[str, float],
         eos_coef: float,
         losses: List[str],
-        gamma: float,
-        class_weight: Tensor
+        gamma: float
     ):
         """Create the criterion.
         Parameters:
@@ -43,6 +42,8 @@ class CriterionDETR(nn.Module):
         self.gamma = gamma
         empty_weight = torch.ones(self.num_classes + 1)
         empty_weight[-1] = self.eos_coef
+        self.class_weigth = torch.Tensor([2.87390456, 10.68441318, 24.80539797,  3.15725789, 15.50703923,
+        9.35812958, 33.27023288])
         self.register_buffer("empty_weight", empty_weight)
 
     def loss_labels(self, outputs, targets, indices, num_boxes): 
