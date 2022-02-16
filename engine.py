@@ -86,9 +86,9 @@ class Engine:
             self.loss_window.append(losses.item())  # type: ignore
             data_bar.set_postfix(
                 {
-                    "loss": sum(self.loss_window) / len(self.loss_window),
-                    "lr": optimizer.param_groups[0]["lr"],
-                    **{k: v.item() for k, v in loss_dict_scaled.items()},
+                    "loss": f"{sum(self.loss_window) / len(self.loss_window):.3f}",
+                    **{k: f"{v.item():.3f}" for k, v in loss_dict_scaled.items()},
+                    "lr": [g["lr"] for g in optimizer.param_groups],
                 }
             )
             self.global_step += 1
@@ -133,7 +133,7 @@ class Engine:
             loss_value = losses.item()  # type: ignore
             loss_list.append(loss_value)
 
-            data_bar.set_postfix({"loss": sum(loss_list) / len(loss_list)})
+            data_bar.set_postfix({"loss": f"{sum(loss_list) / len(loss_list):.3f}"})
 
         loss = sum(loss_list) / len(loss_list)
         report = postprocessor.evaluate()
