@@ -52,7 +52,10 @@ class CriterionDETR(nn.Module):
         """
         assert "pred_logits" in outputs
         src_logits = outputs["pred_logits"]
-
+        
+        device = pred_logits.device
+        self.class_weight.to(device)
+         
         idx = self._get_src_permutation_idx(indices)
         target_classes_o = torch.cat(
             [t["labels"].reshape(-1)[j] for t, (_, j) in zip(targets, indices)]
