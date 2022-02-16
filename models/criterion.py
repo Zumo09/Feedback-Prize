@@ -22,6 +22,7 @@ class CriterionDETR(nn.Module):
         weight_dict: Dict[str, float],
         eos_coef: float,
         losses: List[str],
+        gamma: float,
     ):
         """Create the criterion.
         Parameters:
@@ -30,6 +31,7 @@ class CriterionDETR(nn.Module):
             weight_dict: dict containing as key the names of the losses and as values their relative weight.
             eos_coef: relative classification weight applied to the no-object category
             losses: list of all the losses to be applied. See get_loss for list of available losses.
+            gamma: parameter for the focal loss (0 to disable)
         """
         super().__init__()
         self.num_classes = num_classes
@@ -37,11 +39,12 @@ class CriterionDETR(nn.Module):
         self.weight_dict = weight_dict
         self.eos_coef = eos_coef
         self.losses = losses
+        self.gamma = gamma
         empty_weight = torch.ones(self.num_classes + 1)
         empty_weight[-1] = self.eos_coef
         self.register_buffer("empty_weight", empty_weight)
 
-    def loss_labels(self, outputs, targets, indices, num_boxes, focal=True, gamma=2):
+    def loss_labels(self, outputs, targets, indices, num_boxes): 
         """Classification loss (NLL)
         targets dicts must contain the key "labels" containing a tensor of dim [nb_target_boxes]
         """
@@ -61,8 +64,9 @@ class CriterionDETR(nn.Module):
         target_classes[idx] = target_classes_o
 
         loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)  # type: ignore
-        if focal :
-          loss_ce = (1 - torch.max(src_logits))**gamma*loss_ce
+        if self.gamma > 0:
+            loss_ce = (1 - torch.max(src_logits))**self.gamma * loss_ce
+
         losses = {"loss_ce": loss_ce}
 
         return losses

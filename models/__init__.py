@@ -39,6 +39,7 @@ def build_models(num_classes: int, args):
         weight_dict=weight_dict,
         eos_coef=args.eos_coef,
         losses=losses,
+        gamma=args.focal_loss_gamma
     )
     criterion.to(device)
 
