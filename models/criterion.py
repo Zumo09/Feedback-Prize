@@ -53,7 +53,7 @@ class CriterionDETR(nn.Module):
         assert "pred_logits" in outputs
         src_logits = outputs["pred_logits"]
         
-        device = pred_logits.device
+        device = src_logits.device
         self.class_weight.to(device)
          
         idx = self._get_src_permutation_idx(indices)
