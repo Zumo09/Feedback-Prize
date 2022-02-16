@@ -54,7 +54,6 @@ class CriterionDETR(nn.Module):
         src_logits = outputs["pred_logits"]
         
         device = src_logits.device
-        self.class_weight.to(device)
          
         idx = self._get_src_permutation_idx(indices)
         target_classes_o = torch.cat(
@@ -68,7 +67,7 @@ class CriterionDETR(nn.Module):
         )
         target_classes[idx] = target_classes_o
 
-        loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.class_weight)  # type: ignore
+        loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.class_weight.to(device))  # type: ignore
         if self.gamma > 0:
            
             loss_ce = (1 - torch.max(src_logits))**self.gamma * loss_ce
