@@ -41,7 +41,7 @@ class CriterionDETR(nn.Module):
         empty_weight[-1] = self.eos_coef
         self.register_buffer("empty_weight", empty_weight)
 
-    def loss_labels(self, outputs, targets, indices, num_boxes, focal=True, gamma=2):
+    def loss_labels(self, outputs, targets, indices, num_boxes, focal=False, gamma=2):
         """Classification loss (NLL)
         targets dicts must contain the key "labels" containing a tensor of dim [nb_target_boxes]
         """
