@@ -23,6 +23,7 @@ class CriterionDETR(nn.Module):
         eos_coef: float,
         losses: List[str],
         gamma: float,
+        class_weight: Tensor
     ):
         """Create the criterion.
         Parameters:
@@ -63,9 +64,9 @@ class CriterionDETR(nn.Module):
         )
         target_classes[idx] = target_classes_o
 
-        loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)  # type: ignore
+        loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.class_weight)  # type: ignore
         if self.gamma > 0:
-            print('focal')
+           
             loss_ce = (1 - torch.max(src_logits))**self.gamma * loss_ce
 
         losses = {"loss_ce": loss_ce}
