@@ -25,11 +25,12 @@ def get_args_parser():
     parser.add_argument("--epochs", default=300, type=int, help="Number of trainig epochs")
     parser.add_argument("--lr_drop", default=200, type=int, help="Drop learning rate each lr_drop epochs")
     parser.add_argument("--clip_max_norm", default=0.1, type=float, help="Gradient clipping max norm")
+    parser.add_argument("--train_trans_from_epoch", default=-1, type=int, help="train the transformer module from the specified epoch (-1 to disable)")
+    parser.add_argument("--transformer_lr", default=1e-5, type=int, help="learning rate for the transformer")
 
     # Model parameters
     parser.add_argument("--hidden_dim", default=1024, type=int, help="MLP hidden dimension")
     parser.add_argument("--num_queries", default=50, type=int, help="Number of query slots")
-    parser.add_argument("--train_transformer", default=False, action='store_true', help="train the transformer module")
     parser.add_argument("--frozen_weights", type=str, default=None, help="Path to the pretrained model")
     parser.add_argument("--resume", type=str, default=None, help="resume from checkpoint")
 
@@ -82,11 +83,13 @@ def main(args):
     tokenizer, model, criterion = build_models(num_classes, args)
     model.to(device)
 
+    model.set_transformer_trainable(False)
+    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print("number of params:", n_parameters)
+
     print("Models Loaded")
     print()
 
-    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print("number of params:", n_parameters)
 
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=args.lr, weight_decay=args.weight_decay
@@ -153,6 +156,14 @@ def main(args):
     output_dir = engine.set_outputs(args.output_dir)
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
+        if epoch == args.train_trans_from_epoch:
+            print('Start training Transformer')
+            model.set_transformer_trainable(True)
+            optimizer.add_param_group({'params': model.transformer_parameters(), 'lr': args.transformer_lr})
+
+            n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+            print("number of params:", n_parameters)
+
         engine.train_one_epoch(
             tokenizer=tokenizer,
             model=model,
