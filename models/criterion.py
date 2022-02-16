@@ -41,7 +41,7 @@ class CriterionDETR(nn.Module):
         empty_weight[-1] = self.eos_coef
         self.register_buffer("empty_weight", empty_weight)
 
-    def loss_labels(self, outputs, targets, indices, num_boxes, focal=False, gamma=2):
+    def loss_labels(self, outputs, targets, indices, num_boxes, focal=True, gamma=2):
         """Classification loss (NLL)
         targets dicts must contain the key "labels" containing a tensor of dim [nb_target_boxes]
         """
@@ -62,7 +62,7 @@ class CriterionDETR(nn.Module):
 
         loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)  # type: ignore
         if focal :
-          loss_ce = (1 - src_logits)**gamma*loss_ce
+          loss_ce = (1 - torch.max(src_logits))**gamma*loss_ce
         losses = {"loss_ce": loss_ce}
 
         return losses
