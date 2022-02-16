@@ -87,7 +87,7 @@ class FBPTestDataset(Dataset):
 
 def load_test_texts(path: str, preprocess: List[Callable[[str], str]]) -> pd.Series:
     documents = {}
-    for f_name in tqdm(os.listdir(path + "test/")):
+    for f_name in tqdm(os.listdir(path + "test/"), desc=f"Loading Test Dataset"):
         doc_name = f_name.replace(".txt", "")
         # with open(f_name, 'r') as f:
         with open(path + "train/" + f_name, "r") as f:
@@ -107,7 +107,7 @@ def load_texts(
         size = int(len(listdir) * dataset_size)
         listdir = listdir[:size]
 
-    for f_name in tqdm(listdir):
+    for f_name in tqdm(listdir, desc=f"Loading Dataset"):
         doc_name = f_name.replace(".txt", "")
         # with open(f_name, 'r') as f:
         with open(path + "train/" + f_name, "r") as f:

@@ -53,7 +53,7 @@ class Engine:
         model.train()
         criterion.train()
 
-        data_bar = tqdm(data_loader, desc=f"Train Epoch {epoch:4d}")
+        data_bar = tqdm(data_loader, desc=f"Train Epoch {epoch}")
         for samples, targets, info in data_bar:
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
@@ -88,7 +88,7 @@ class Engine:
                 {
                     "loss": f"{sum(self.loss_window) / len(self.loss_window):.3f}",
                     **{k: f"{v.item():.3f}" for k, v in loss_dict_scaled.items()},
-                    "lr": [g["lr"] for g in optimizer.param_groups],
+                    "lr": [f"{g['lr']:.1e}" for g in optimizer.param_groups],
                 }
             )
             self.global_step += 1
@@ -117,7 +117,7 @@ class Engine:
         criterion.eval()
 
         loss_list = []
-        data_bar = tqdm(data_loader, desc=f"Valid Epoch {epoch:4d}")
+        data_bar = tqdm(data_loader, desc=f"Valid Epoch {epoch}")
         for samples, targets, infos in data_bar:
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
