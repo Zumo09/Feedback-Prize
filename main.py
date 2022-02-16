@@ -58,10 +58,11 @@ def get_args_parser():
 
 
 def main(args):
-    print("ARGUMENTS".rjust(20), "-", "VALUES")
     vargs = vars(args)
+    pad = max(len(k) for k in vargs.keys())
+    print("ARGUMENTS".rjust(pad), "-", "VALUES")
     for key in sorted(vargs.keys()):
-        print(key.rjust(20), ":", vargs[key])
+        print(key.rjust(pad), ":", vargs[key])
 
     device = torch.device(args.device)
 
@@ -84,15 +85,13 @@ def main(args):
     model.to(device)
 
     model.set_transformer_trainable(False)
-    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print("number of params:", n_parameters)
-
+    
     print("Models Loaded")
     print()
 
 
     optimizer = torch.optim.AdamW(
-        model.parameters(), lr=args.lr, weight_decay=args.weight_decay
+        model.last_layers_parameters(), lr=args.lr, weight_decay=args.weight_decay
     )
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_drop)
 
@@ -151,9 +150,11 @@ def main(args):
         print(report.to_string())
         sys.exit()
 
-    print("Start training")
-
     output_dir = engine.set_outputs(args.output_dir)
+    print("Start training")
+    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print("number of params:", n_parameters)
+    print('- '*50)
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
         if epoch == args.train_trans_from_epoch:
@@ -163,6 +164,7 @@ def main(args):
 
             n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
             print("number of params:", n_parameters)
+            print('- '*50)
 
         engine.train_one_epoch(
             tokenizer=tokenizer,
@@ -204,6 +206,7 @@ def main(args):
         )
 
         print(report.to_string())
+        print('- '*50)
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
