@@ -65,6 +65,7 @@ class CriterionDETR(nn.Module):
 
         loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)  # type: ignore
         if self.gamma > 0:
+            print('focal')
             loss_ce = (1 - torch.max(src_logits))**self.gamma * loss_ce
 
         losses = {"loss_ce": loss_ce}
