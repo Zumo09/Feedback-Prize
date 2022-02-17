@@ -39,7 +39,7 @@ def get_args_parser():
     parser.add_argument("--giou_loss_coef", default=0.5, type=float, help="giou box coefficient in the loss")
     parser.add_argument("--overlap_loss_coef", default=0.5, type=float, help="Overlap box coefficient in the loss")
     parser.add_argument("--focal_loss_gamma", default=2, type=float, help="Focal Loss parameter (0 to disable)")
-    parser.add_argument("--eos_coef", default=0.1, type=float, help="Relative classification weight of the no-object class")
+    # parser.add_argument("--eos_coef", default=0.1, type=float, help="Relative classification weight of the no-object class")
 
     # Dataset parameters
     parser.add_argument("--input_path", default="./input/feedback-prize-2021/", type=str, help="Folder where the inputs are")

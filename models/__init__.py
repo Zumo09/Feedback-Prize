@@ -37,7 +37,7 @@ def build_models(num_classes: int, args):
         num_classes=num_classes,
         matcher=matcher,
         weight_dict=weight_dict,
-        eos_coef=args.eos_coef,
+        # eos_coef=args.eos_coef,
         losses=losses,
         gamma=args.focal_loss_gamma
     )

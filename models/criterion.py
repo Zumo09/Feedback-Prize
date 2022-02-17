@@ -20,16 +20,16 @@ class CriterionDETR(nn.Module):
         num_classes: int,
         matcher: HungarianMatcher,
         weight_dict: Dict[str, float],
-        eos_coef: float,
+        # eos_coef: float,
         losses: List[str],
-        gamma: float
+        gamma: float,
     ):
         """Create the criterion.
         Parameters:
             num_classes: number of object categories, omitting the special no-object category
             matcher: module able to compute a matching between targets and proposals
             weight_dict: dict containing as key the names of the losses and as values their relative weight.
-            eos_coef: relative classification weight applied to the no-object category
+            # eos_coef: relative classification weight applied to the no-object category
             losses: list of all the losses to be applied. See get_loss for list of available losses.
             gamma: parameter for the focal loss (0 to disable)
         """
@@ -37,24 +37,35 @@ class CriterionDETR(nn.Module):
         self.num_classes = num_classes
         self.matcher = matcher
         self.weight_dict = weight_dict
-        self.eos_coef = eos_coef
         self.losses = losses
         self.gamma = gamma
-        empty_weight = torch.ones(self.num_classes + 1)
-        empty_weight[-1] = self.eos_coef
-        self.class_weight = torch.Tensor([3.37810707, 12.55890411, 29.15729758,  3.71117238, 18.22761956,
-       10.99993514, 39.10721697,  6.69990124])
-        self.register_buffer("empty_weight", empty_weight)
+        # self.eos_coef = eos_coef
+        # empty_weight = torch.ones(self.num_classes + 1)
+        # empty_weight[-1] = self.eos_coef
+        # self.register_buffer("empty_weight", empty_weight)
+        class_weight = torch.Tensor(
+            [
+                3.37810707,
+                12.55890411,
+                29.15729758,
+                3.71117238,
+                18.22761956,
+                10.99993514,
+                39.10721697,
+                6.69990124,
+            ]
+        )
+        self.register_buffer("class_weight", class_weight)
 
-    def loss_labels(self, outputs, targets, indices, num_boxes): 
+    def loss_labels(self, outputs, targets, indices, num_boxes):
         """Classification loss (NLL)
         targets dicts must contain the key "labels" containing a tensor of dim [nb_target_boxes]
         """
         assert "pred_logits" in outputs
         src_logits = outputs["pred_logits"]
-        
+
         device = src_logits.device
-         
+
         idx = self._get_src_permutation_idx(indices)
         target_classes_o = torch.cat(
             [t["labels"].reshape(-1)[j] for t, (_, j) in zip(targets, indices)]
@@ -67,10 +78,10 @@ class CriterionDETR(nn.Module):
         )
         target_classes[idx] = target_classes_o
 
-        loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.class_weight.to(device))  # type: ignore
+        loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.class_weight)  # type: ignore
         if self.gamma > 0:
-           
-            loss_ce = (1 - torch.max(src_logits))**self.gamma * loss_ce
+
+            loss_ce = (1 - torch.max(src_logits)) ** self.gamma * loss_ce
 
         losses = {"loss_ce": loss_ce}
 
