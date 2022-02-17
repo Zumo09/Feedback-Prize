@@ -1,7 +1,6 @@
 import argparse
 import datetime
 import random
-import sys
 import time
 from pathlib import Path
 
@@ -30,7 +29,7 @@ def get_args_parser():
 
     # Model parameters
     parser.add_argument("--hidden_dim", default=1024, type=int, help="MLP hidden dimension")
-    parser.add_argument("--num_queries", default=50, type=int, help="Number of query slots")
+    parser.add_argument("--num_queries", default=40, type=int, help="Number of query slots")
     parser.add_argument("--frozen_weights", type=str, default=None, help="Path to the pretrained model")
     parser.add_argument("--resume", type=str, default=None, help="resume from checkpoint")
 
@@ -39,7 +38,7 @@ def get_args_parser():
     parser.add_argument("--giou_loss_coef", default=0.5, type=float, help="giou box coefficient in the loss")
     parser.add_argument("--overlap_loss_coef", default=0.5, type=float, help="Overlap box coefficient in the loss")
     parser.add_argument("--focal_loss_gamma", default=2, type=float, help="Focal Loss parameter (0 to disable)")
-    # parser.add_argument("--eos_coef", default=0.1, type=float, help="Relative classification weight of the no-object class")
+    parser.add_argument("--no_class_weight", default=False, action='store_true', help="Don't use class weights")
 
     # Dataset parameters
     parser.add_argument("--input_path", default="./input/feedback-prize-2021/", type=str, help="Folder where the inputs are")
@@ -76,13 +75,14 @@ def main(args):
     print()
     print("Loading Dataset...")
 
-    dataset_train, dataset_val, postprocessor, num_classes = build_fdb_data(args)
+    dataset_train, dataset_val, postprocessor, num_classes, class_weights = build_fdb_data(args)
+    print('Using class weights:', class_weights)
 
     print("Dataset loaded")
     print()
     print("Loading Models...")
 
-    tokenizer, model, criterion = build_models(num_classes, args)
+    tokenizer, model, criterion = build_models(num_classes, class_weights, args)
     model.to(device)
 
     model.set_transformer_trainable(False)
@@ -149,7 +149,7 @@ def main(args):
         )
 
         print(report.to_string())
-        sys.exit()
+        return postprocessor.results
 
     output_dir = engine.set_outputs(args.output_dir)
     print("Start training")
@@ -212,6 +212,7 @@ def main(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print("Training time {}".format(total_time_str))
+    return postprocessor.results
 
 
 if __name__ == "__main__":

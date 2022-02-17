@@ -6,6 +6,7 @@ from sklearn.preprocessing import OrdinalEncoder
 from datasets.processing_funcs import PIPELINE
 from .fbp_dataset import FBPDataset, load_texts
 from .postprocess import FBPPostProcess
+from .cw import get_class_weights
 
 
 def build_fdb_data(args):
@@ -26,7 +27,12 @@ def build_fdb_data(args):
     num_classes = len(label_unique)
     postprocessor = FBPPostProcess(encoder, tags, num_classes)
 
-    return train_dataset, val_dataset, postprocessor, num_classes
+    if args.no_class_weight:
+        class_weights = None
+    else:
+        class_weights = get_class_weights(train_idx, tags, encoder, args.num_queries)
+
+    return train_dataset, val_dataset, postprocessor, num_classes, class_weights
 
 
 def collate_fn(batch):

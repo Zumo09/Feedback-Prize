@@ -1,4 +1,5 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -20,9 +21,9 @@ class CriterionDETR(nn.Module):
         num_classes: int,
         matcher: HungarianMatcher,
         weight_dict: Dict[str, float],
-        # eos_coef: float,
         losses: List[str],
         gamma: float,
+        class_weights: Optional[np.ndarray],
     ):
         """Create the criterion.
         Parameters:
@@ -39,22 +40,13 @@ class CriterionDETR(nn.Module):
         self.weight_dict = weight_dict
         self.losses = losses
         self.gamma = gamma
-        # self.eos_coef = eos_coef
-        # empty_weight = torch.ones(self.num_classes + 1)
-        # empty_weight[-1] = self.eos_coef
-        # self.register_buffer("empty_weight", empty_weight)
-        class_weight = torch.Tensor(
-            [
-                3.37810707,
-                12.55890411,
-                29.15729758,
-                3.71117238,
-                18.22761956,
-                10.99993514,
-                39.10721697,
-                6.69990124,
-            ]
-        )
+
+        if class_weights is None:
+            class_weight = torch.ones(num_classes + 1)
+        else:
+            assert len(class_weights) == num_classes + 1
+            class_weight = torch.Tensor(class_weights)
+
         self.register_buffer("class_weight", class_weight)
 
     def loss_labels(self, outputs, targets, indices, num_boxes):
