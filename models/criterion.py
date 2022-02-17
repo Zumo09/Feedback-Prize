@@ -64,7 +64,7 @@ class CriterionDETR(nn.Module):
         assert "pred_logits" in outputs
         src_logits = outputs["pred_logits"]
 
-        device = src_logits.device
+        # device = src_logits.device
 
         idx = self._get_src_permutation_idx(indices)
         target_classes_o = torch.cat(
