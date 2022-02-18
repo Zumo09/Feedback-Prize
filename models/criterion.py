@@ -24,6 +24,7 @@ class CriterionDETR(nn.Module):
         losses: List[str],
         gamma: float,
         class_weights: Optional[np.ndarray],
+        effective_num: Optional[bool]
     ):
         """Create the criterion.
         Parameters:
@@ -46,7 +47,10 @@ class CriterionDETR(nn.Module):
         else:
             assert len(class_weights) == num_classes + 1
             class_weight = torch.Tensor(class_weights)
-
+            
+        if effective_num:
+            class_weight = (1-beta)/(1-beta**class_weight)
+            
         self.register_buffer("class_weight", class_weight)
 
     def loss_labels(self, outputs, targets, indices, num_boxes):
