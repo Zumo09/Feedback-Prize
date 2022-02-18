@@ -35,7 +35,7 @@ class Transformer(nn.Module):
 
 class DETR(nn.Module):
     def __init__(
-        self, model, num_classes, num_queries, hidden_dim, transformer_hidden_dim=768
+        self, model, num_classes, num_queries, hidden_dim, transformer_hidden_dim=768, class_biases=None
     ):
         super().__init__()
 
@@ -43,6 +43,8 @@ class DETR(nn.Module):
         # prediction heads, one extra class for predicting non-empty slots
         # note that in baseline DETR linear_bbox layer is 3-layer MLP
         self.linear_class = nn.Linear(transformer_hidden_dim, num_classes + 1)
+        if class_biases is not None:
+            self.linear_class.bias.data = torch.Tensor(class_biases)
         self.linear_bbox = MLP(transformer_hidden_dim, hidden_dim, 2, 3)
         self.query_embed = nn.Embedding(num_queries, transformer_hidden_dim)
         # output positional encodings (object queries)

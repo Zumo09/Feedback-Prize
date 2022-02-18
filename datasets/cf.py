@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.preprocessing import OrdinalEncoder
 
 
-def get_class_weights(
+def get_class_freqs(
     indexes: Sequence, tags: pd.DataFrame, encoder: OrdinalEncoder, num_queries: int
 ) -> np.ndarray:
     data = tags[tags["id"].isin(indexes)]
@@ -21,6 +21,4 @@ def get_class_weights(
     if (counts == 0).any():
         raise RuntimeError("Category not included in training set... Increase dataset size!")
 
-    freq = counts / counts.sum()
-    class_weights = 1 / freq
-    return class_weights
+    return counts / counts.sum()

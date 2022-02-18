@@ -32,6 +32,7 @@ def get_args_parser():
     parser.add_argument("--num_queries", default=40, type=int, help="Number of query slots")
     parser.add_argument("--frozen_weights", type=str, default=None, help="Path to the pretrained model")
     parser.add_argument("--resume", type=str, default=None, help="resume from checkpoint")
+    parser.add_argument("--init_last_biases", default=True, help="Init last layer biases using logits distribution")
 
     # Loss coefficients
     parser.add_argument("--bbox_loss_coef", default=1, type=float, help="L1 box coefficient in the loss")
@@ -77,14 +78,14 @@ def main(args):
     print()
     print("Loading Dataset...")
 
-    dataset_train, dataset_val, postprocessor, num_classes, class_weights = build_fdb_data(args)
-    print('Using class weights:', class_weights)
+    dataset_train, dataset_val, postprocessor, num_classes, freqs = build_fdb_data(args)
+    print('Using frequencies:', freqs)
 
     print("Dataset loaded")
     print()
     print("Loading Models...")
 
-    tokenizer, model, criterion = build_models(num_classes, class_weights, args)
+    tokenizer, model, criterion = build_models(num_classes, freqs, args)
     model.to(device)
 
     model.set_transformer_trainable(False)

@@ -7,7 +7,7 @@ from .criterion import CriterionDETR
 from transformers import LEDModel, LEDTokenizerFast  # type: ignore
 
 
-def build_models(num_classes: int, class_weights: Optional[np.ndarray], args):
+def build_models(num_classes: int, freqs: Optional[np.ndarray], args):
     device = torch.device(args.device)
 
     model = DETR(
@@ -15,6 +15,7 @@ def build_models(num_classes: int, class_weights: Optional[np.ndarray], args):
         num_classes=num_classes,
         hidden_dim=args.hidden_dim,
         num_queries=args.num_queries,
+        class_biases=np.log(freqs / (1 - freqs)) if args.init_last_biases else None
     )
 
     tokenizer = PrepareInputs(
@@ -35,6 +36,15 @@ def build_models(num_classes: int, class_weights: Optional[np.ndarray], args):
     }
 
     losses = ["labels", "boxes", "cardinality", "overlap"]
+
+    if args.no_class_weight:
+        class_weights = None
+    else:
+        class_weights = 1 / freqs
+        
+        if args.effective_num :
+            class_weights = (1-args.beta)/(1-args.beta**(1/class_weights)) #Class weights are the inverse of the freq
+    
     criterion = CriterionDETR(
         num_classes=num_classes,
         matcher=matcher,
