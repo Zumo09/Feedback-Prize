@@ -1,107 +1,43 @@
 import pandas as pd
-from spacy import displacy
 
-# Credits for this part of visualisation _> https://www.kaggle.com/thedrcat
-
-OPTIONS = {
-    "ents": (
-        "Lead",
-        "Position",
-        "Evidence",
-        "Claim",
-        "Concluding Statement",
-        "Counterclaim",
-        "Rebuttal",
-    ),
-    "colors": {
-        "Lead": "#8000ff",
-        "Position": "#2b7ff6",
-        "Evidence": "#2adddd",
-        "Claim": "#80ffb4",
-        "Concluding Statement": "d4dd80",
-        "Counterclaim": "#ff8042",
-        "Rebuttal": "#ff0000",
-    },
+COLORS = {
+    "Position": "\033[31m",  # Red
+    "Lead": "\033[32m",
+    "Concluding Statement": "\033[33m",  # Yellow
+    "Evidence": "\033[34m",  # Blue
+    "Claim": "\033[35m",
+    "Counterclaim": "\033[36m",
+    "Rebuttal": "\033[95m",
+    "bold": "\033[1m",
+    "end": "\033[0m",
 }
 
 
-# def highlight_segments_dataset(id_example: str, dataset):
-#     text = dataset.documents[id_example]
-#     ents = []
-#     for _, row in dataset.tags[dataset.tags["id"] == id_example].iterrows():  # type: ignore
-#         ents.append(
-#             {
-#                 "start": int(row["discourse_start"]),
-#                 "end": int(row["discourse_end"]),
-#                 "label": row["discourse_type"],
-#             }
-#         )
-
-#     doc2 = {"text": text, "ents": ents, "title": id_example}
-
-#     displacy.render(doc2, style="ent", options=OPTIONS, manual=True, jupyter=True)
-
-
-def highlight_segments(id_example: str, text: str, tags: pd.DataFrame):
-    splitted_text = text.split()
-    tags = tags[tags['id'] == id_example]
+def print_segments(id_example: str, text: str, tags: pd.DataFrame):
+    tags = tags[tags["id"] == id_example]
     try:
-        labels = tags['class']
+        labels = tags["class"]
     except KeyError:
-        labels = tags['discourse_type']
+        labels = tags["discourse_type"]
 
-    indexes = [
-        [int(i) for i in pred.split()]
-        for pred in tags['predictionstring']
-    ]
+    indexes = [[int(i) for i in pred.split()] for pred in tags["predictionstring"]]
 
     boxes = [(i[0], i[-1]) for i in indexes]
 
-    len_words_inc = [0]
-    cont = 0
-    for word in splitted_text:
-        idx = text[cont:].find(word)
-        cont += max(0, idx)
-        len_words_inc.append(cont + len(word))
-    len_words_inc.append(len(text))
-    len_words_inc.append(len(text))
-    len_words_inc.append(len(text))
-    len_words_inc.append(len(text))
+    discourse = "end"
+    for idx, word in enumerate(text.split()):
+        color = "end"
+        for (s, e), label in zip(boxes, labels):
+            if s <= idx <= e:
+                color = label
+                break
 
-    ents = [
-        {
-            "start": len_words_inc[start],
-            "end": len_words_inc[end+1],
-            "label": label,
-        }
-        for label, (start, end) in zip(labels, boxes)
-    ]
+        if discourse != color:
+            if discourse != "end":
+                print("[" + discourse + "]")
+            else:
+                print()
 
-    doc2 = {"text": text, "ents": ents, "title": id_example}
-    displacy.render(doc2, style="ent", options=OPTIONS, manual=True, jupyter=True)
+        discourse = color
 
-
-# def highlight_segments_plo(text: str, labels, boxes, title: str = 'Document'):
-#     splitted_text = text.split()
-
-#     assert len(labels) == len(boxes), f'Labels and boxes of different length {len(labels)=}, {len(boxes)=}'
-
-#     len_words_inc = [0]
-#     cont = 0
-#     for word in splitted_text:
-#         idx = text[cont:].find(word)
-#         cont += max(0, idx)
-#         len_words_inc.append(cont + len(word))
-#     len_words_inc.append(len(text))
-
-#     ents = [
-#         {
-#             "start": len_words_inc[start],
-#             "end": len_words_inc[end + 1],
-#             "label": label,
-#         }
-#         for label, (start, end) in zip(labels, boxes)
-#     ]
-
-#     doc2 = {"text": text, "ents": ents, "title": title}
-#     displacy.render(doc2, style="ent", options=OPTIONS, manual=True, jupyter=True)
+        print(COLORS[color] + word, end=" ")
