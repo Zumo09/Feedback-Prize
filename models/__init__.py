@@ -42,7 +42,7 @@ def build_models(num_classes: int, class_weights: Optional[np.ndarray], args):
         losses=losses,
         gamma=args.focal_loss_gamma,
         class_weights=class_weights,
-        effective_num=arg.effective_num
+        effective_num=args.effective_num
     )
     criterion.to(device)
 
