@@ -33,7 +33,7 @@ def build_fdb_data(args):
         class_weights = get_class_weights(train_idx, tags, encoder, args.num_queries)
         
         if args.effective_num :
-            class_weights = (1-args.beta)/(1-args.beta**(class_weights/tot))
+            class_weights = (1-args.beta)/(1-args.beta**(1/class_weights)) #Class weights are the inverse of the freq
 
     return train_dataset, val_dataset, postprocessor, num_classes, class_weights
 
