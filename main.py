@@ -40,6 +40,7 @@ def get_args_parser():
     parser.add_argument("--focal_loss_gamma", default=2, type=float, help="Focal Loss parameter (0 to disable)")
     parser.add_argument("--no_class_weight", default=False, action='store_true', help="Don't use class weights")
     parser.add_argument("--effective_num", default=False, help="For effective number of object weights")
+    parser.add_argument("--beta", default=0, help="beta parameter for effective number of object weights")
 
     # Dataset parameters
     parser.add_argument("--input_path", default="./input/feedback-prize-2021/", type=str, help="Folder where the inputs are")
