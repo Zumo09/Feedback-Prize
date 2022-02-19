@@ -161,7 +161,7 @@ class CriterionDETR(nn.Module):
             "labels": self.loss_labels,
             "cardinality": self.loss_cardinality,
             "boxes": self.loss_boxes,
-            #"overlap": self.loss_overlapped_boxes,
+            "overlap": self.loss_overlapped_boxes,
         }
         assert loss in loss_map, f"do you really want to compute {loss} loss?"
         return loss_map[loss](outputs, targets, indices, num_boxes, **kwargs)
