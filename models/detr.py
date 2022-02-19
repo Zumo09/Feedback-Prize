@@ -64,6 +64,12 @@ class DETR(nn.Module):
         for param in self.transformer.parameters():
             param.requires_grad = trainable
 
+    def transformer_parameters(self):
+        return (p for n, p in self.named_parameters() if "transformer" in n and p.requires_grad)
+    
+    def last_layers_parameters(self):
+        return (p for n, p in self.named_parameters() if "transformer" not in n and p.requires_grad)
+
 
 class MLP(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim, num_layers):

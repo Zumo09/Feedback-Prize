@@ -23,13 +23,14 @@ def get_args_parser():
     parser.add_argument("--weight_decay", default=1e-4, type=float, help="Weight decay regularization factor")
     parser.add_argument("--start_epoch", default=0, type=int, metavar="N", help="Start epoch")
     parser.add_argument("--epochs", default=300, type=int, help="Number of trainig epochs")
-    parser.add_argument("--lr_drop", default=200, type=int, help="Learning rate drop")
+    parser.add_argument("--lr_drop", default=200, type=int, help="Drop learning rate each lr_drop epochs")
     parser.add_argument("--clip_max_norm", default=0.1, type=float, help="Gradient clipping max norm")
+    parser.add_argument("--train_trans_from_epoch", default=-1, type=int, help="train the transformer module from the specified epoch (-1 to disable)")
+    parser.add_argument("--transformer_lr", default=1e-5, type=int, help="learning rate for the transformer")
 
     # Model parameters
-    parser.add_argument("--hidden_dim", default=256, type=int, help="Size of the embeddings (dimension of the transformer)")
+    parser.add_argument("--hidden_dim", default=1024, type=int, help="MLP hidden dimension")
     parser.add_argument("--num_queries", default=50, type=int, help="Number of query slots")
-    parser.add_argument("--train_transformer", default=False, action='store_true', help="train the transformer module")
     parser.add_argument("--frozen_weights", type=str, default=None, help="Path to the pretrained model")
     parser.add_argument("--resume", type=str, default=None, help="resume from checkpoint")
 
@@ -44,23 +45,24 @@ def get_args_parser():
     parser.add_argument("--test_size", default=0.2, type=float, help="Size of the validation set in the range (0, 1)")
     parser.add_argument("--no_preprocessing", default=False, action='store_true', help="Don't apply preprocessing to the dataset")
     parser.add_argument("--num_workers", default=2, type=int, help="Workers used by the DataLoader")
+    parser.add_argument("--dataset_size", default=1.0, type=float, help="[0, 1], 1 for full dataset")
+    parser.add_argument("--no_align_target", default=False, action='store_true', help="Don't se aligned target")
 
     # Other parameters
     parser.add_argument("--output_dir", default="./outputs", type=str, help="Folder where the outputs will be saved")
     parser.add_argument("--device", default="cuda", help="device to use for training / testing")
     parser.add_argument("--seed", default=42, type=int, help="seed for reproducibility")
     parser.add_argument("--eval", default=False, action='store_true', help="only evaluate the validation set and exit")
-    parser.add_argument("--dataset_size", default=1.0, type=float, help="[0, 1], 1 for full dataset")
-    parser.add_argument("--align_target", default=False, action='store_true', help="Use aligned target")
 
     return parser
 
 
 def main(args):
-    print("ARGUMENTS".rjust(20), "-", "VALUES")
     vargs = vars(args)
+    pad = max(len(k) for k in vargs.keys())
+    print("ARGUMENTS".rjust(pad), "-", "VALUES")
     for key in sorted(vargs.keys()):
-        print(key.rjust(20), ":", vargs[key])
+        print(key.rjust(pad), ":", vargs[key])
 
     device = torch.device(args.device)
 
@@ -82,14 +84,14 @@ def main(args):
     tokenizer, model, criterion = build_models(num_classes, args)
     model.to(device)
 
+    model.set_transformer_trainable(False)
+    
     print("Models Loaded")
     print()
 
-    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print("number of params:", n_parameters)
 
     optimizer = torch.optim.AdamW(
-        model.parameters(), lr=args.lr, weight_decay=args.weight_decay
+        model.last_layers_parameters(), lr=args.lr, weight_decay=args.weight_decay
     )
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_drop)
 
@@ -148,11 +150,22 @@ def main(args):
         print(report.to_string())
         sys.exit()
 
-    print("Start training")
-
     output_dir = engine.set_outputs(args.output_dir)
+    print("Start training")
+    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print("number of params:", n_parameters)
+    print('- '*50)
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
+        if epoch == args.train_trans_from_epoch:
+            print('Start training Transformer')
+            model.set_transformer_trainable(True)
+            optimizer.add_param_group({'params': model.transformer_parameters(), 'lr': args.transformer_lr})
+
+            n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+            print("number of params:", n_parameters)
+            print('- '*50)
+
         engine.train_one_epoch(
             tokenizer=tokenizer,
             model=model,
@@ -193,6 +206,7 @@ def main(args):
         )
 
         print(report.to_string())
+        print('- '*50)
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))

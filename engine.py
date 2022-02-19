@@ -53,7 +53,7 @@ class Engine:
         model.train()
         criterion.train()
 
-        data_bar = tqdm(data_loader, desc=f"Train Epoch {epoch:4d}")
+        data_bar = tqdm(data_loader, desc=f"Train Epoch {epoch}")
         for samples, targets, info in data_bar:
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
@@ -86,9 +86,9 @@ class Engine:
             self.loss_window.append(losses.item())  # type: ignore
             data_bar.set_postfix(
                 {
-                    "loss": sum(self.loss_window) / len(self.loss_window),
-                    "lr": optimizer.param_groups[0]["lr"],
-                    **{k: v.item() for k, v in loss_dict_scaled.items()},
+                    "loss": f"{sum(self.loss_window) / len(self.loss_window):.3f}",
+                    **{k: f"{v.item():.3f}" for k, v in loss_dict_scaled.items()},
+                    "lr": ", ".join(f"{g['lr']:.1e}" for g in optimizer.param_groups),
                 }
             )
             self.global_step += 1
@@ -117,7 +117,7 @@ class Engine:
         criterion.eval()
 
         loss_list = []
-        data_bar = tqdm(data_loader, desc=f"Valid Epoch {epoch:4d}")
+        data_bar = tqdm(data_loader, desc=f"Valid Epoch {epoch}")
         for samples, targets, infos in data_bar:
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
@@ -126,14 +126,22 @@ class Engine:
             loss_dict = criterion(batch_outputs, targets)
             weight_dict = criterion.weight_dict
 
-            losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)  # type: ignore
+            loss_dict_scaled = {
+                k: v * weight_dict[k] for k, v in loss_dict.items() if k in weight_dict
+            }
+            losses_scaled = sum(loss_dict_scaled.values())
 
             postprocessor.add_outputs(batch_outputs, infos)
 
-            loss_value = losses.item()  # type: ignore
+            loss_value = losses_scaled.item()  # type: ignore
             loss_list.append(loss_value)
 
-            data_bar.set_postfix({"loss": sum(loss_list) / len(loss_list)})
+            data_bar.set_postfix(
+                {
+                    "loss": f"{sum(loss_list) / len(loss_list):.3f}",
+                    **{k: f"{v.item():.3f}" for k, v in loss_dict_scaled.items()},
+                }
+            )
 
         loss = sum(loss_list) / len(loss_list)
         report = postprocessor.evaluate()
