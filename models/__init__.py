@@ -39,11 +39,10 @@ def build_models(num_classes: int, freqs: Optional[np.ndarray], args):
     
     if args.no_class_weight:
         class_weights = None
+    elif args.effective_num:
+        class_weights = (1-args.beta)/(1-args.beta**(freqs)) #Class weights are the inverse of the freq
     else:
-        class_weights = 1 / freqs
-        
-        if args.effective_num :
-            class_weights = (1-args.beta)/(1-args.beta**(1/class_weights)) #Class weights are the inverse of the freq
+        class_weights = 1 / freqs            
     
     criterion = CriterionDETR(
         num_classes=num_classes,

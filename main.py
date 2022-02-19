@@ -41,7 +41,7 @@ def get_args_parser():
     parser.add_argument("--overlap_loss_coef", default=0.5, type=float, help="Overlap box coefficient in the loss")
     parser.add_argument("--focal_loss_gamma", default=2, type=float, help="Focal Loss parameter (0 to disable)")
     parser.add_argument("--no_class_weight", default=False, action='store_true', help="Don't use class weights")
-    parser.add_argument("--effective_num", default=False, help="For effective number of object weights")
+    parser.add_argument("--effective_num", default=False, action='store_true', help="For effective number of object weights")
     parser.add_argument("--beta", default=0, type=float, help="beta parameter for effective number of object weights")
 
     # Dataset parameters
