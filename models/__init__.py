@@ -35,8 +35,8 @@ def build_models(num_classes: int, freqs: Optional[np.ndarray], args):
     "loss_overlap": args.overlap_loss_coef,
     }
 
-    losses = ["labels", "boxes", "cardinality", "overlap"]
-
+    losses = args.losses
+    
     if args.no_class_weight:
         class_weights = None
     else:
