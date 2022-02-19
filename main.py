@@ -12,8 +12,6 @@ from datasets import build_fdb_data, collate_fn
 from models import build_models
 from engine import Engine
 
-from typing import List
-
 
 def get_args_parser():
     parser = argparse.ArgumentParser("DETR for Argument Mining")
@@ -37,7 +35,7 @@ def get_args_parser():
     parser.add_argument("--init_last_biases", default=True, help="Init last layer biases using logits distribution")
 
     # Loss coefficients
-    parser.add_argument("--losses", default=["labels", "boxes", "cardinality"], type=List[str], help="List of losses to compute, chose between: labels, boxes, cardinality, overlap")
+    parser.add_argument("--losses", default=["labels", "boxes", "cardinality"], nargs="+", help="List of losses to compute, chose between: labels, boxes, cardinality, overlap")
     parser.add_argument("--bbox_loss_coef", default=1, type=float, help="L1 box coefficient in the loss")
     parser.add_argument("--giou_loss_coef", default=0.5, type=float, help="giou box coefficient in the loss")
     parser.add_argument("--overlap_loss_coef", default=0.5, type=float, help="Overlap box coefficient in the loss")
