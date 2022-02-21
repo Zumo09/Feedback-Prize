@@ -15,7 +15,9 @@ def build_models(num_classes: int, freqs: Optional[np.ndarray], args):
         num_classes=num_classes,
         hidden_dim=args.hidden_dim,
         num_queries=args.num_queries,
-        class_biases=np.log(freqs / (1 - freqs)) if args.init_last_biases else None
+        class_depth=args.class_depth,
+        bbox_depth=args.bbox_depth,
+        class_biases=np.log(freqs / (1 - freqs)) if args.init_last_biases and freqs is not None else None
     )
 
     tokenizer = PrepareInputs(
@@ -42,7 +44,7 @@ def build_models(num_classes: int, freqs: Optional[np.ndarray], args):
     elif args.effective_num:
         class_weights = (1-args.beta)/(1-args.beta**(freqs)) #Class weights are the inverse of the freq
     else:
-        class_weights = 1 / freqs            
+        class_weights = 1 / freqs if freqs is not None else None         
     
     criterion = CriterionDETR(
         num_classes=num_classes,
