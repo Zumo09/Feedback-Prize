@@ -44,6 +44,7 @@ class Engine:
         tokenizer: PrepareInputs,
         model: DETR,
         criterion: CriterionDETR,
+        postprocessor: FBPPostProcess,
         data_loader: DataLoader,
         optimizer: torch.optim.Optimizer,
         device: torch.device,
@@ -54,7 +55,7 @@ class Engine:
         criterion.train()
 
         data_bar = tqdm(data_loader, desc=f"Train Epoch {epoch}")
-        for samples, targets, info in data_bar:
+        for samples, targets, infos in data_bar:
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
             batch_outputs = self.get_outputs(tokenizer, model, samples, device)
@@ -71,6 +72,8 @@ class Engine:
             losses_scaled = sum(loss_dict_scaled.values())  # type: ignore
 
             loss_value = losses_scaled.item()  # type: ignore
+
+            postprocessor.add_outputs(batch_outputs, infos)
 
             if not math.isfinite(loss_value):
                 print("Loss is {}, stopping training".format(loss_value))
@@ -101,6 +104,13 @@ class Engine:
                 }
                 for key, value in scalars.items():
                     self.writer.add_scalars(key, {"Train": value}, self.global_step)
+        
+        report = postprocessor.evaluate()
+        if self.writer:
+            self.writer.add_scalars("accuracy", {"Train": report["f1"]["macro_avg"]}, self.global_step)
+        
+        return report
+
 
     @torch.no_grad()
     def evaluate(

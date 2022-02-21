@@ -173,16 +173,19 @@ def main(args):
             print("number of params:", n_parameters)
             print('- '*50)
 
-        engine.train_one_epoch(
+        postprocessor.reset_results()
+        report = engine.train_one_epoch(
             tokenizer=tokenizer,
             model=model,
             criterion=criterion,
+            postprocessor=postprocessor,
             data_loader=data_loader_train,
             optimizer=optimizer,
             device=device,
             epoch=epoch,
             max_norm=args.clip_max_norm,
         )
+        print(report.to_string())
         lr_scheduler.step()
         if args.output_dir:
             checkpoint_paths = [output_dir / "checkpoint.pth"]
