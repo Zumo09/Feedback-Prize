@@ -40,10 +40,10 @@ class DETR(nn.Module):
         num_classes,
         num_queries,
         hidden_dim,
-        class_depth = 3,
-        bbox_depth = 4,
-        transformer_hidden_dim=768,
+        class_depth,
+        bbox_depth,
         class_biases=None,
+        transformer_hidden_dim=768,
     ):
         super().__init__()
 

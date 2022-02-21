@@ -30,8 +30,8 @@ def get_args_parser():
     # Model parameters
     parser.add_argument("--hidden_dim", default=1024, type=int, help="MLP hidden dimension")
     parser.add_argument("--num_queries", default=40, type=int, help="Number of query slots")
-    parser.add_argument("--class_depth", default=2, type=int, help="Layers in the classification head")
-    parser.add_argument("--bbox_depth", default=2, type=int, help="Layers in the bbox regression head")
+    parser.add_argument("--class_depth", default=1, type=int, help="Layers in the classification head")
+    parser.add_argument("--bbox_depth", default=3, type=int, help="Layers in the bbox regression head")
     parser.add_argument("--frozen_weights", type=str, default=None, help="Path to the pretrained model")
     parser.add_argument("--resume", type=str, default=None, help="resume from checkpoint")
     parser.add_argument("--init_last_biases", default=True, help="Init last layer biases using logits distribution")
