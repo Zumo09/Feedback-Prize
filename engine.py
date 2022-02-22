@@ -3,7 +3,7 @@ from datetime import datetime
 import math
 from pathlib import Path
 import sys
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 from typing import Optional
 
 import torch
