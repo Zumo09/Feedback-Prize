@@ -38,7 +38,7 @@ def get_args_parser():
 
     # Loss coefficients
     parser.add_argument("--losses", default=["labels", "boxes", "cardinality"], nargs="+", help="List of losses to compute, chose between: labels, boxes, cardinality, overlap")
-    parser.add_argument("--ce_loce_loss_coefss_coef", default=1, type=float, help="CrossEntropy coefficient in the loss")
+    parser.add_argument("--ce_loss_coef", default=1, type=float, help="CrossEntropy coefficient in the loss")
     parser.add_argument("--block_ce_for", default=-1, type=float, help="Block CrossEntropy loss for n epochs")
     parser.add_argument("--bbox_loss_coef", default=1, type=float, help="L1 box coefficient in the loss")
     parser.add_argument("--giou_loss_coef", default=0.5, type=float, help="giou box coefficient in the loss")
