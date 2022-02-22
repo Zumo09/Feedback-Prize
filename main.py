@@ -9,7 +9,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from datasets import build_fdb_data, collate_fn
-from models import build_models
+from models import build_models, make_criterion
 from engine import Engine
 
 
@@ -38,7 +38,8 @@ def get_args_parser():
 
     # Loss coefficients
     parser.add_argument("--losses", default=["labels", "boxes", "cardinality"], nargs="+", help="List of losses to compute, chose between: labels, boxes, cardinality, overlap")
-    parser.add_argument("--ce_loss_coef", default=1, type=float, help="CrossEntropy coefficient in the loss")
+    parser.add_argument("--ce_loce_loss_coefss_coef", default=1, type=float, help="CrossEntropy coefficient in the loss")
+    parser.add_argument("--block_ce_for", default=-1, type=float, help="Block CrossEntropy loss for n epochs")
     parser.add_argument("--bbox_loss_coef", default=1, type=float, help="L1 box coefficient in the loss")
     parser.add_argument("--giou_loss_coef", default=0.5, type=float, help="giou box coefficient in the loss")
     parser.add_argument("--overlap_loss_coef", default=0.5, type=float, help="Overlap box coefficient in the loss")
@@ -89,6 +90,10 @@ def main(args):
     print()
     print("Loading Models...")
 
+    ce_loss_coef = args.ce_loss_coef
+    if args.block_ce_for > 0: 
+        args.ce_loss_coef = 0 # block ce
+
     tokenizer, model, criterion = build_models(num_classes, freqs, args)
     model.to(device)
 
@@ -96,7 +101,6 @@ def main(args):
     
     print("Models Loaded")
     print()
-
 
     optimizer = torch.optim.AdamW(
         model.last_layers_parameters(), lr=args.lr, weight_decay=args.weight_decay
@@ -132,7 +136,7 @@ def main(args):
             checkpoint = torch.load(args.resume, map_location="cpu")
         model.load_state_dict(checkpoint["model"])
         if (
-            not args.eval
+            not args.evalce_loss_coef
             and "optimizer" in checkpoint
             and "lr_scheduler" in checkpoint
             and "epoch" in checkpoint
@@ -173,6 +177,10 @@ def main(args):
             n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
             print("number of params:", n_parameters)
             print('- '*50)
+        
+        if epoch == args.block_ce_for: # restore ce_loss_coef
+            args.ce_loss_coef = ce_loss_coef
+            criterion = make_criterion(num_classes, freqs, args, device)
 
         postprocessor.reset_results()
         report = engine.train_one_epoch(
