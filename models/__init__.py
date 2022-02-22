@@ -24,17 +24,22 @@ def build_models(num_classes: int, freqs: Optional[np.ndarray], args):
         tokenizer=LEDTokenizerFast.from_pretrained("allenai/led-base-16384")
     )
 
+    criterion = make_criterion(num_classes, freqs, args, device)
+
+    return tokenizer, model, criterion
+
+def make_criterion(num_classes, freqs, args, device):
     matcher = HungarianMatcher(
-        cost_class=1,
+        cost_class=args.ce_loss_coef,
         cost_bbox=args.bbox_loss_coef,
         cost_giou=args.giou_loss_coef,
     )
 
     weight_dict = {
-    "loss_ce": 1,
-    "loss_bbox": args.bbox_loss_coef,
-    "loss_giou": args.giou_loss_coef,
-    "loss_overlap": args.overlap_loss_coef,
+        "loss_ce": args.ce_loss_coef,
+        "loss_bbox": args.bbox_loss_coef,
+        "loss_giou": args.giou_loss_coef,
+        "loss_overlap": args.overlap_loss_coef,
     }
 
     losses = args.losses
@@ -56,4 +61,4 @@ def build_models(num_classes: int, freqs: Optional[np.ndarray], args):
     )
     criterion.to(device)
 
-    return tokenizer, model, criterion
+    return criterion
