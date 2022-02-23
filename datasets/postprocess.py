@@ -47,7 +47,8 @@ class FBPPostProcess:
     def _evaluate_doc_class(self, pred, tags):
         lp = len(pred)
         lt = len(tags)
-        overlaps = np.zeros(shape=(lp, lt))
+        overlaps_pt = np.zeros(shape=(lp, lt))
+        overlaps_tp = np.zeros(shape=(lp, lt))
         p_sets = [self._predstr_to_set(ps) for ps in pred["predictionstring"]]
         t_sets = [self._predstr_to_set(ps) for ps in tags["predictionstring"]]
 
@@ -55,12 +56,33 @@ class FBPPostProcess:
             p_set = p_sets[p]
             for t in range(lt):
                 t_set = t_sets[t]
-                overlaps[p, t] = len(p_set.intersection(t_set)) / len(t_set)
+                overlaps_pt[p, t] = len(p_set.intersection(t_set)) / len(t_set)
+                overlaps_tp[p, t] = len(t_set.intersection(p_set)) / len(p_set)
 
-        pi, ti = linear_sum_assignment(overlaps, maximize=True)
-        tp = (overlaps[pi, ti] >= 0.5).sum()
-        fp = max(0, lp - tp)
-        fn = max(0, lt - lp)
+        tp = 0
+        fn = 0
+        pred_matched = []
+        for t in range(lt):
+            larger = 0
+            selected = None
+            for p in range(lp):
+                if p in pred_matched:
+                    continue
+                
+                opt = overlaps_pt[p, t]
+                otp = overlaps_tp[p, t]
+                if opt >= 0.5 and otp >= 0.5:
+                    if (opt + otp) > larger:
+                        larger = opt + otp
+                        selected = p
+                
+            if selected is None:
+                fn += 1
+            else:
+                pred_matched.append(selected)
+                tp += 1
+
+        fp = lp - tp
         return tp, fp, fn
 
     def evaluate(self):
