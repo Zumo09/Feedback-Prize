@@ -31,6 +31,10 @@ class Engine:
 
             glob_dec_attn = torch.ones(model.num_queries).to(device)
 
+            # BUG Token indices sequence length is longer than the specified maximum 
+            # sequence length for this model (16823 > 16384). Running this sequence 
+            # through the model will result in indexing errors
+
             outputs.append(model(inputs, glob_enc_attn, glob_dec_attn))
 
         batch_outputs = {
