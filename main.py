@@ -136,7 +136,7 @@ def main(args):
             checkpoint = torch.load(args.resume, map_location="cpu")
         model.load_state_dict(checkpoint["model"])
         if (
-            not args.evalce_loss_coef
+            not args.eval
             and "optimizer" in checkpoint
             and "lr_scheduler" in checkpoint
             and "epoch" in checkpoint
