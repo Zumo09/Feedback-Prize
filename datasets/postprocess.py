@@ -1,4 +1,4 @@
-import math
+from typing import Optional
 from sklearn.preprocessing import OrdinalEncoder
 import torch
 import torch.nn.functional as F
@@ -7,8 +7,6 @@ import pandas as pd
 import numpy as np
 
 from util import box_ops
-
-from scipy.optimize import linear_sum_assignment
 
 
 class FBPPostProcess:
@@ -85,11 +83,12 @@ class FBPPostProcess:
         fp = lp - tp
         return tp, fp, fn
 
-    def evaluate(self):
+    def evaluate(self, results: Optional[pd.DataFrame] = None):
         """
         Evaluation metric defined by the Kaggle Challenge
         """
-        results = self.results
+        if results is None:
+            results = self.results
         gb_res = results.groupby(by="id")
         gb_tag = self.tags.groupby(by="id")
 

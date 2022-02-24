@@ -24,20 +24,33 @@ def print_segments(id_example: str, text: str, tags: pd.DataFrame):
 
     boxes = [(i[0], i[-1]) for i in indexes]
 
-    discourse = "end"
-    for idx, word in enumerate(text.split()):
-        color = "end"
-        for (s, e), label in zip(boxes, labels):
+    splitted = text.split()
+
+    ents = list(zip(boxes, labels))
+    printed = []
+    for idx, word in enumerate(splitted):
+        found = False
+        remaining = ents.copy()
+        for ent in ents:
+            (s, e), label = ent
             if s <= idx <= e:
-                color = label
-                break
-
-        if discourse != color:
-            if discourse != "end":
-                print("[" + discourse + "]")
-            else:
+                found = True
                 print()
+                print(COLORS[label] + " ".join(splitted[s: e]) + " [" + label + "]")
+                remaining.remove(ent)
+                printed.append(ent)
 
-        discourse = color
+        if not found:
+            for ent in printed:
+                (s, e), label = ent
+                if s <= idx <= e:
+                    found = True
+                    break
 
-        print(COLORS[color] + word, end=" ")
+        if not found:
+            print(COLORS["end"] + word, end=' ')
+
+        ents = remaining
+
+    if len(ents) != 0:
+        raise RuntimeWarning('Not all boxes are printed')
