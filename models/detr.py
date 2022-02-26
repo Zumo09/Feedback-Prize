@@ -42,6 +42,7 @@ class DETR(nn.Module):
         hidden_dim,
         class_depth,
         bbox_depth,
+        dropout,
         class_biases=None,
         transformer_hidden_dim=768,
     ):
@@ -51,11 +52,11 @@ class DETR(nn.Module):
         # prediction heads, one extra class for predicting non-empty slots
         # note that in baseline DETR linear_bbox layer is 3-layer MLP
         # self.linear_class = nn.Linear(transformer_hidden_dim, num_classes + 1)
-        self.linear_class = MLP(transformer_hidden_dim, hidden_dim, num_classes + 1, class_depth)
+        self.linear_class = MLP(transformer_hidden_dim, hidden_dim, num_classes + 1, class_depth, dropout)
         if class_biases is not None:
             self.linear_class.layers[-1].bias.data = torch.Tensor(class_biases)
             # self.linear_class.bias.data = torch.Tensor(class_biases)
-        self.linear_bbox = MLP(transformer_hidden_dim, hidden_dim, 2, bbox_depth)
+        self.linear_bbox = MLP(transformer_hidden_dim, hidden_dim, 2, bbox_depth, dropout)
         self.query_embed = nn.Embedding(num_queries, transformer_hidden_dim)
         # output positional encodings (object queries)
         self.query_pos = nn.parameter.Parameter(torch.rand(100, transformer_hidden_dim))
@@ -92,17 +93,18 @@ class DETR(nn.Module):
 
 
 class MLP(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, num_layers):
+    def __init__(self, input_dim, hidden_dim, output_dim, num_layers, dropout):
         super().__init__()
         self.num_layers = num_layers
         h = [hidden_dim] * (num_layers - 1)
         self.layers = nn.ModuleList(
             nn.Linear(n, k) for n, k in zip([input_dim] + h, h + [output_dim])
         )
+        self.dropout = nn.Dropout(dropout) 
 
     def forward(self, x):
         for i, layer in enumerate(self.layers):
-            x = F.relu(layer(x)) if i < self.num_layers - 1 else layer(x)
+            x = self.dropout(F.relu(layer(x))) if i < self.num_layers - 1 else self.dropout(layer(x))
         return x
 
 
