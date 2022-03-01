@@ -39,6 +39,7 @@ class DETR(nn.Module):
         bbox_depth,
         dropout,
         class_biases=None,
+        init_weight=None,
         transformer_hidden_dim=768,
     ):
         super().__init__()
