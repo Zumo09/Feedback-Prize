@@ -14,12 +14,7 @@ class Transformer(nn.Module):
         self.decoder = self.model.decoder
 
     def forward(self, enc_input_ids, query_embed, glob_enc_attn, glob_dec_attn):
-        # Non mi è chiaro come dobbiamo assegnare le mask.
-        # per la maschera dell'encoder consigliano di metter la global attention solo sul token
-        # che definisce l'inizio <s>, mentre per il decoder non capisco.
-        # Ditemi voi se capite meglio.
-        # glob_enc_mask = torch.zeros(tokens.size()[1])
-        # glob_enc_mask[0] = 1
+
         enc = self.encoder(enc_input_ids, global_attention_mask=glob_enc_attn)
         tgt = torch.zeros_like(query_embed)
         tgt = tgt.unsqueeze(-1).permute(2, 0, 1)
@@ -56,7 +51,14 @@ class DETR(nn.Module):
         if class_biases is not None:
             self.linear_class.layers[-1].bias.data = torch.Tensor(class_biases)
             # self.linear_class.bias.data = torch.Tensor(class_biases)
+           
+        if init_weight == 'xavier':
+          (torch.nn.init.xavier_uniform_(self.linear_class.layers[i].weight) for i in range(self.linear_class.num_layers))
+        
         self.linear_bbox = MLP(transformer_hidden_dim, hidden_dim, 2, bbox_depth, dropout)
+        if init_weight == 'xavier':
+          (torch.nn.init.xavier_uniform_(self.linear_bbox.layers[i].weight) for i in range(self.linear_bbox.num_layers))
+        
         self.query_embed = nn.Embedding(num_queries, transformer_hidden_dim)
         # output positional encodings (object queries)
         self.query_pos = nn.parameter.Parameter(torch.rand(100, transformer_hidden_dim))
