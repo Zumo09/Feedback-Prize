@@ -36,6 +36,7 @@ def get_args_parser():
     parser.add_argument("--resume", type=str, default=None, help="resume from checkpoint")
     parser.add_argument("--init_last_biases", default=True, help="Init last layer biases using logits distribution")
     parser.add_argument("--dropout", default=0, help="Dropout value applied after each linear layers (0 to disable) ")
+    parser.add_argument("--init_weight", default=None, help="Initialization of the MLP weights")
 
     # Loss coefficients
     parser.add_argument("--losses", default=["labels", "boxes", "cardinality"], nargs="+", help="List of losses to compute, chose between: labels, boxes, cardinality, overlap")
