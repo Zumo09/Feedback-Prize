@@ -41,13 +41,19 @@ class DETR(nn.Module):
         class_biases=None,
         init_weight=None,
         transformer_hidden_dim=768,
+        pretrained=True,
     ):
         super().__init__()
 
         self.transformer = Transformer(model)
-        # prediction heads, one extra class for predicting non-empty slots
-        # note that in baseline DETR linear_bbox layer is 3-layer MLP
-        # self.linear_class = nn.Linear(transformer_hidden_dim, num_classes + 1)
+        
+        if not pretrained:
+          print('You choose to not use a pretrained model.')
+          print('Initializing weights...')
+          self.reset_parameters()
+          print('Weights initialized using Xavier.')
+        
+
         self.linear_class = MLP(transformer_hidden_dim, hidden_dim, num_classes + 1, class_depth, dropout)
         if class_biases is not None:
             self.linear_class.layers[-1].bias.data = torch.Tensor(class_biases)
@@ -93,6 +99,11 @@ class DETR(nn.Module):
             for n, p in self.named_parameters()
             if "transformer" not in n and p.requires_grad
         )
+    
+    def reset_parameters(self):
+        for p in self.transformer.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
 
 
 class MLP(nn.Module):
