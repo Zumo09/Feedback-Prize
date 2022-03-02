@@ -19,7 +19,8 @@ def build_models(num_classes: int, freqs: Optional[np.ndarray], args):
         bbox_depth=args.bbox_depth,
         dropout=args.dropout,
         class_biases=np.log(freqs / (1 - freqs)) if args.init_last_biases and freqs is not None else None,
-        init_weight=args.init_weight
+        init_weight=args.init_weight,
+        pretrained=args.pretrained
     )
 
     tokenizer = PrepareInputs(
