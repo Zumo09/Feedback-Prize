@@ -49,7 +49,7 @@ class DETR(nn.Module):
         
         if not pretrained:
           print('You choose to not use a pretrained model.')
-          print('Initializing weights...')
+          print('Initializing transformer weights...')
           self.reset_parameters()
           print('Weights initialized using Xavier.')
         
@@ -60,12 +60,16 @@ class DETR(nn.Module):
             # self.linear_class.bias.data = torch.Tensor(class_biases)
            
         if init_weight == 'xavier':
+          print('Initializing MLP weights for classes...')
           (torch.nn.init.xavier_uniform_(self.linear_class.layers[i].weight) for i in range(self.linear_class.num_layers))
+          print('Weights initialized using Xavier.')
         
         self.linear_bbox = MLP(transformer_hidden_dim, hidden_dim, 2, bbox_depth, dropout)
         if init_weight == 'xavier':
+          print('Initializing MLP weights for bbox...')
           (torch.nn.init.xavier_uniform_(self.linear_bbox.layers[i].weight) for i in range(self.linear_bbox.num_layers))
-        
+          print('Weights initialized using Xavier.')
+            
         self.query_embed = nn.Embedding(num_queries, transformer_hidden_dim)
         # output positional encodings (object queries)
         self.query_pos = nn.parameter.Parameter(torch.rand(100, transformer_hidden_dim))
