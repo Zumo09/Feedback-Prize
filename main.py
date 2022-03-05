@@ -1,7 +1,6 @@
 import argparse
 import datetime
 import random
-import sys
 import time
 from pathlib import Path
 
@@ -10,7 +9,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from datasets import build_fdb_data, collate_fn
-from models import build_models
+from models import build_models, make_criterion
 from engine import Engine
 
 
@@ -26,19 +25,31 @@ def get_args_parser():
     parser.add_argument("--lr_drop", default=200, type=int, help="Drop learning rate each lr_drop epochs")
     parser.add_argument("--clip_max_norm", default=0.1, type=float, help="Gradient clipping max norm")
     parser.add_argument("--train_trans_from_epoch", default=-1, type=int, help="train the transformer module from the specified epoch (-1 to disable)")
-    parser.add_argument("--transformer_lr", default=1e-5, type=int, help="learning rate for the transformer")
+    parser.add_argument("--transformer_lr", default=1e-5, type=float, help="learning rate for the transformer")
 
     # Model parameters
     parser.add_argument("--hidden_dim", default=1024, type=int, help="MLP hidden dimension")
-    parser.add_argument("--num_queries", default=50, type=int, help="Number of query slots")
+    parser.add_argument("--num_queries", default=40, type=int, help="Number of query slots")
+    parser.add_argument("--class_depth", default=1, type=int, help="Layers in the classification head")
+    parser.add_argument("--bbox_depth", default=3, type=int, help="Layers in the bbox regression head")
     parser.add_argument("--frozen_weights", type=str, default=None, help="Path to the pretrained model")
     parser.add_argument("--resume", type=str, default=None, help="resume from checkpoint")
+    parser.add_argument("--init_last_biases", default=True, help="Init last layer biases using logits distribution")
+    parser.add_argument("--dropout", default=0, help="Dropout value applied after each linear layers (0 to disable) ")
+    parser.add_argument("--init_weight", default=None, help="Initialization of the MLP weights")
+    parser.add_argument("--pretrained", type=bool, default=True, help="For choosing a not pretrained model")
 
     # Loss coefficients
+    parser.add_argument("--losses", default=["labels", "boxes", "cardinality"], nargs="+", help="List of losses to compute, chose between: labels, boxes, cardinality, overlap")
+    parser.add_argument("--ce_loss_coef", default=1, type=float, help="CrossEntropy coefficient in the loss")
+    parser.add_argument("--block_ce_for", default=-1, type=float, help="Block CrossEntropy loss for n epochs")
     parser.add_argument("--bbox_loss_coef", default=1, type=float, help="L1 box coefficient in the loss")
     parser.add_argument("--giou_loss_coef", default=0.5, type=float, help="giou box coefficient in the loss")
     parser.add_argument("--overlap_loss_coef", default=0.5, type=float, help="Overlap box coefficient in the loss")
-    parser.add_argument("--eos_coef", default=0.1, type=float, help="Relative classification weight of the no-object class")
+    parser.add_argument("--focal_loss_gamma", default=2, type=float, help="Focal Loss parameter (0 to disable)")
+    parser.add_argument("--no_class_weight", default=False, action='store_true', help="Don't use class weights")
+    parser.add_argument("--effective_num", default=False, action='store_true', help="For effective number of object weights")
+    parser.add_argument("--beta", default=0, type=float, help="beta parameter for effective number of object weights")
 
     # Dataset parameters
     parser.add_argument("--input_path", default="./input/feedback-prize-2021/", type=str, help="Folder where the inputs are")
@@ -75,20 +86,24 @@ def main(args):
     print()
     print("Loading Dataset...")
 
-    dataset_train, dataset_val, postprocessor, num_classes = build_fdb_data(args)
+    dataset_train, dataset_val, postprocessor, num_classes, freqs = build_fdb_data(args)
+    print('Using frequencies:', freqs)
 
     print("Dataset loaded")
     print()
     print("Loading Models...")
 
-    tokenizer, model, criterion = build_models(num_classes, args)
+    ce_loss_coef = args.ce_loss_coef
+    if args.block_ce_for > 0: 
+        args.ce_loss_coef = 0 # block ce
+
+    tokenizer, model, criterion = build_models(num_classes, freqs, args)
     model.to(device)
 
     model.set_transformer_trainable(False)
     
     print("Models Loaded")
     print()
-
 
     optimizer = torch.optim.AdamW(
         model.last_layers_parameters(), lr=args.lr, weight_decay=args.weight_decay
@@ -148,7 +163,7 @@ def main(args):
         )
 
         print(report.to_string())
-        sys.exit()
+        return postprocessor.results
 
     output_dir = engine.set_outputs(args.output_dir)
     print("Start training")
@@ -165,17 +180,24 @@ def main(args):
             n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
             print("number of params:", n_parameters)
             print('- '*50)
+        
+        if epoch == args.block_ce_for: # restore ce_loss_coef
+            args.ce_loss_coef = ce_loss_coef
+            criterion = make_criterion(num_classes, freqs, args, device)
 
-        engine.train_one_epoch(
+        postprocessor.reset_results()
+        report = engine.train_one_epoch(
             tokenizer=tokenizer,
             model=model,
             criterion=criterion,
+            postprocessor=postprocessor,
             data_loader=data_loader_train,
             optimizer=optimizer,
             device=device,
             epoch=epoch,
             max_norm=args.clip_max_norm,
         )
+        print(report.to_string())
         lr_scheduler.step()
         if args.output_dir:
             checkpoint_paths = [output_dir / "checkpoint.pth"]
@@ -211,6 +233,7 @@ def main(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print("Training time {}".format(total_time_str))
+    return postprocessor.results
 
 
 if __name__ == "__main__":
