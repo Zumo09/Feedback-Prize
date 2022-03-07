@@ -4,6 +4,17 @@ from torch import nn
 import torch.nn.functional as F
 
 
+
+class Backbone(nn.Module):
+    def __init__(self, backbone):
+        super().__init__()
+        self.backbone = backbone.from_pretrained('allenai/longformer-4096')
+
+    def forward(self, input_ids):
+        embeddings = self.backbone(input_ids)
+        return embeddings
+    
+    
 class Transformer(nn.Module):
     def __init__(self, model):
         super().__init__()
@@ -26,12 +37,20 @@ class Transformer(nn.Module):
         )
 
         return dec
+    
+    def reset_parameters(self):                
+        print('Initializing transformer weights...')
+        for p in self.model.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+        print('Weights initialized using Xavier.')
 
 
 class DETR(nn.Module):
     def __init__(
         self,
         model,
+        config,
         num_classes,
         num_queries,
         hidden_dim,
@@ -45,15 +64,11 @@ class DETR(nn.Module):
     ):
         super().__init__()
 
-        self.transformer = Transformer(model)
+        self.backbone = Backbone(backbone)
+    
+        self.transformer = Transformer(model, config)
         
-        if not pretrained:
-          print('You choose to not use a pretrained model.')
-          print('Initializing transformer weights...')
-          self.reset_parameters()
-          print('Weights initialized using Xavier.')
         
-
         self.linear_class = MLP(transformer_hidden_dim, hidden_dim, num_classes + 1, class_depth, dropout)
         if class_biases is not None:
             self.linear_class.layers[-1].bias.data = torch.Tensor(class_biases)
@@ -87,6 +102,10 @@ class DETR(nn.Module):
         }
 
     def set_transformer_trainable(self, trainable: bool):
+        for param in self.transformer.parameters():
+            param.requires_grad = trainable
+            
+    def set_backbone_trainable(self, trainable: bool):
         for param in self.transformer.parameters():
             param.requires_grad = trainable
 
