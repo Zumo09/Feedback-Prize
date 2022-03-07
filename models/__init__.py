@@ -4,14 +4,16 @@ import torch
 from .detr import DETR, PrepareInputs
 from .matcher import HungarianMatcher
 from .criterion import CriterionDETR
-from transformers import LEDModel, LEDTokenizerFast  # type: ignore
+from transformers import LEDModel, LEDTokenizerFast, LongformerModel, LongformerTokenizerFast  # type: ignore
 
 
-def build_models(num_classes: int, freqs: Optional[np.ndarray], args):
+def build_models(config, num_classes: int, freqs: Optional[np.ndarray], args):
     device = torch.device(args.device)
 
     model = DETR(
-        model=LEDModel.from_pretrained("allenai/led-base-16384"),
+        model=LEDModel,
+        config=config,
+        backbone=LongformerModel,
         num_classes=num_classes,
         hidden_dim=args.hidden_dim,
         num_queries=args.num_queries,
@@ -20,11 +22,10 @@ def build_models(num_classes: int, freqs: Optional[np.ndarray], args):
         dropout=args.dropout,
         class_biases=np.log(freqs / (1 - freqs)) if args.init_last_biases and freqs is not None else None,
         init_weight=args.init_weight,
-        pretrained=args.pretrained
     )
 
     tokenizer = PrepareInputs(
-        tokenizer=LEDTokenizerFast.from_pretrained("allenai/led-base-16384")
+        tokenizer=LongformerTokenizerFast.from_pretrained("allenai/longformer-4096")
     )
 
     criterion = make_criterion(num_classes, freqs, args, device)
