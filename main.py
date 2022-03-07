@@ -96,11 +96,15 @@ def main(args):
     ce_loss_coef = args.ce_loss_coef
     if args.block_ce_for > 0: 
         args.ce_loss_coef = 0 # block ce
-
-    tokenizer, model, criterion = build_models(num_classes, freqs, args)
+    
+    config = LEDConfig.from_pretrained('allenai/led-base-16384')
+    
+    tokenizer, model, criterion = build_models(config, num_classes, freqs, args)
     model.to(device)
 
-    model.set_transformer_trainable(False)
+    model.set_transformer_trainable(True)
+    model.set_backbone_trainable(False)
+
     
     print("Models Loaded")
     print()
