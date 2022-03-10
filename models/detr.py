@@ -51,6 +51,7 @@ class DETR(nn.Module):
         self,
         model,
         config,
+        backbone,
         num_classes,
         num_queries,
         hidden_dim,
