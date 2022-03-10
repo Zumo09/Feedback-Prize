@@ -8,7 +8,7 @@ import torch.nn.functional as F
 class Backbone(nn.Module):
     def __init__(self, backbone):
         super().__init__()
-        self.backbone = backbone.from_pretrained('allenai/longformer-4096')
+        self.backbone = backbone.from_pretrained('allenai/longformer-base-4096')
 
     def forward(self, input_ids):
         embeddings = self.backbone(input_ids)
