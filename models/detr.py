@@ -16,10 +16,10 @@ class Backbone(nn.Module):
     
     
 class Transformer(nn.Module):
-    def __init__(self, model):
+    def __init__(self, model, config):
         super().__init__()
 
-        self.model = model
+        self.model = model(config)
 
         self.encoder = self.model.encoder
         self.decoder = self.model.decoder
