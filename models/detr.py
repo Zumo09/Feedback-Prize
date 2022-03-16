@@ -76,13 +76,13 @@ class DETR(nn.Module):
            
         if init_weight == 'xavier':
           print('Initializing MLP weights for classes...')
-          (torch.nn.init.xavier_uniform_(self.linear_class.layers[i].weight) for i in range(self.linear_class.num_layers))
+          (torch.nn.init.xavier_uniform_(self.linear_class.layers[i].weight) for i in range(self.linear_class.num_layers))  # type: ignore
           print('Weights initialized using Xavier.')
         
         self.linear_bbox = MLP(transformer_hidden_dim, hidden_dim, 2, bbox_depth, dropout)
         if init_weight == 'xavier':
           print('Initializing MLP weights for bbox...')
-          (torch.nn.init.xavier_uniform_(self.linear_bbox.layers[i].weight) for i in range(self.linear_bbox.num_layers))
+          (torch.nn.init.xavier_uniform_(self.linear_bbox.layers[i].weight) for i in range(self.linear_bbox.num_layers))  # type: ignore
           print('Weights initialized using Xavier.')
             
         self.query_embed = nn.Embedding(num_queries, transformer_hidden_dim)
@@ -106,7 +106,7 @@ class DETR(nn.Module):
             param.requires_grad = trainable
             
     def set_backbone_trainable(self, trainable: bool):
-        for param in self.transformer.parameters():
+        for param in self.backbone.parameters():
             param.requires_grad = trainable
 
     def transformer_parameters(self):

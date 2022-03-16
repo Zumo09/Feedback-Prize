@@ -11,7 +11,6 @@ from torch.utils.data import DataLoader
 from datasets import build_fdb_data, collate_fn
 from models import build_models, make_criterion
 from engine import Engine
-from transformers import LEDConfig
 
 
 def get_args_parser():
@@ -97,10 +96,9 @@ def main(args):
     ce_loss_coef = args.ce_loss_coef
     if args.block_ce_for > 0: 
         args.ce_loss_coef = 0 # block ce
+
     
-    config = LEDConfig.from_pretrained('allenai/led-base-16384')
-    
-    tokenizer, model, criterion = build_models(config, num_classes, freqs, args)
+    tokenizer, model, criterion = build_models(num_classes, freqs, args)
     model.to(device)
 
     model.set_transformer_trainable(True)
