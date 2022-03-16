@@ -27,7 +27,7 @@ def build_models(num_classes: int, freqs: Optional[np.ndarray], args):
     )
 
     tokenizer = PrepareInputs(
-        tokenizer=LongformerTokenizerFast.from_pretrained("allenai/longformer-base-4096")
+        tokenizer=LongformerTokenizerFast.from_pretrained("allenai/longformer-base-4096") # type: ignore
     )
 
     criterion = make_criterion(num_classes, freqs, args, device)

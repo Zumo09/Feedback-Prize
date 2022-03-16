@@ -24,7 +24,7 @@ def get_args_parser():
     parser.add_argument("--epochs", default=300, type=int, help="Number of trainig epochs")
     parser.add_argument("--lr_drop", default=200, type=int, help="Drop learning rate each lr_drop epochs")
     parser.add_argument("--clip_max_norm", default=0.1, type=float, help="Gradient clipping max norm")
-    parser.add_argument("--train_trans_from_epoch", default=-1, type=int, help="train the transformer module from the specified epoch (-1 to disable)")
+    parser.add_argument("--train_trans_from_epoch", default=0, type=int, help="train the transformer module from the specified epoch (-1 to disable)")
     parser.add_argument("--transformer_lr", default=1e-5, type=float, help="learning rate for the transformer")
 
     # Model parameters
@@ -103,7 +103,6 @@ def main(args):
 
     model.set_transformer_trainable(True)
     model.set_backbone_trainable(False)
-
     
     print("Models Loaded")
     print()
