@@ -26,8 +26,11 @@ class Engine:
         for doc in samples:
             inputs = tokenizer([doc]).to(device)
 
-            glob_enc_attn = torch.zeros(inputs.size()[1]).to(device)
+            enc_attend_every = 10
+            times = math.ceil(inputs.size()[1] / enc_attend_every)
+            glob_enc_attn = torch.zeros(enc_attend_every, device=device)
             glob_enc_attn[0] = 1
+            glob_enc_attn = glob_enc_attn.tile(times)[:inputs.size()[1]]
 
             glob_dec_attn = torch.ones(model.num_queries).to(device)
 
